@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* tokens + components (you can keep exactly this or your own) */
+@layer base {
+  :root {
+    --bg: 0 0% 100%;
+    --card: 0 0% 100%;
+    --border: 220 13% 91%;
+    --text: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --success: 146 72% 33%;
+    --warning: 38 92% 50%;
+    --danger: 0 84% 60%;
+    --info: 200 94% 40%;
+  }
+  .theme-dark {
+    --bg: 222 47% 11%;
+    --card: 221 39% 13%;
+    --border: 215 28% 17%;
+    --text: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 75%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 210 40% 98%;
+    --success: 146 70% 40%;
+    --warning: 38 100% 55%;
+    --danger: 0 84% 66%;
+    --info: 200 94% 60%;
+  }
+  body { @apply bg-bg text-text antialiased; }
+}
+@layer components {
+  .card { @apply bg-card border border-border rounded-2xl shadow; }
+  .panel { @apply card p-4; }
+  .input { @apply w-full bg-card text-text border border-border rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-primary/35; }
+  .select { @apply input; }
+  .textarea { @apply input min-h-[120px]; }
+  .btn { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 font-medium bg-primary text-primary-foreground hover:brightness-95 active:brightness-90; }
+  .btn-ghost { @apply inline-flex items-center rounded-xl px-4 py-2 border border-border hover:bg-muted; }
+  .btn-success { @apply btn bg-success; }
+  .btn-danger { @apply btn bg-danger; }
+  .thead { @apply bg-muted text-muted-foreground text-xs font-semibold; }
+  .th { @apply text-left px-3 py-2; }
+  .td { @apply px-3 py-2 text-sm; }
+  .tr { @apply border-t border-border; }
+}

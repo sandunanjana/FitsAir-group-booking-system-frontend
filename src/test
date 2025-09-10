@@ -1,0 +1,1832 @@
+// // api
+
+// import { api } from "./client";
+// import type { Role } from "@/auth/store";
+
+// export type LoginRequest = { username: string; password: string };
+// export type LoginResponse = { token: string; role: Role };
+
+// export async function login(body: LoginRequest) {
+//   const { data } = await api.post<LoginResponse>("/api/auth/login", body);
+//   return data;
+// }
+
+
+
+
+// import axios from "axios";
+// import { useAuthStore } from "@/auth/store";
+
+// export const api = axios.create({
+//   baseURL: import.meta.env.VITE_API_BASE_URL,
+// });
+
+// api.interceptors.request.use((config) => {
+//   const token = useAuthStore.getState().token;
+//   if (token) config.headers.Authorization = `Bearer ${token}`;
+//   return config;
+// });
+
+
+
+// import { api } from "./client";
+
+// /** ===== Enums (shared with backend) ===== */
+// export type BookingStatus = "NEW" | "REVIEWING" | "QUOTED" | "CONFIRMED" | "TICKETED" | "CANCELLED";
+// export type RequestCategory = "NORMAL" | "GSA" | "CUSTOMER_CARE" | "AGENT";
+// export type QuotationStatus = "DRAFT" | "SENT" | "EXPIRED" | "ACCEPTED" | "REJECTED" | "RESENT";
+// export type PaymentStatus = "PENDING" | "PAID" | "OVERDUE";
+// export type Salutation = "MR" | "MRS" | "MISS" | "MS" | "DR" | "PROF" | "OTHER";
+// export type RoutingType = "ONE_WAY" | "RETURN" | "MULTICITY";
+// export type GroupType = "EDUCATION" | "CONFERENCE" | "SPORTS" | "PILGRIMAGE" | "MICE" | "OTHER";
+
+// /** ===== Core DTOs ===== */
+// export type GroupRequestDTO = {
+//   id?: number;
+
+//   // contact
+//   salutation?: Salutation;
+//   firstName?: string;
+//   lastName?: string;
+//   contactEmail: string;
+//   contactNumber?: string;
+
+//   // itinerary summary
+//   agentName: string;
+//   fromAirport?: string;
+//   toAirport?: string;
+//   route: string;               // e.g., CMB-DXB
+//   routing?: RoutingType;
+
+//   paxCount: number;
+//   paxAdult?: number;
+//   paxChild?: number;
+//   paxInfant?: number;
+
+//   requestDate: string;
+//   category: RequestCategory;
+//   status?: BookingStatus;
+
+//   posCode: string;
+//   departureDate: string;
+//   returnDate?: string;
+
+//   currency?: string;
+//   groupType?: GroupType;
+//   flightNumber?: string;
+//   specialRequest?: string;
+//   partnerId?: string;
+
+//   quotedFare: string | null;
+// };
+
+// export type QuotationDTO = {
+//   id?: number;
+//   groupRequestId: number;
+//   totalFare: string;
+//   createdDate: string;
+//   expiryDate: string;
+//   status?: QuotationStatus;
+//   approvedBy?: string;
+// };
+
+// export type PaymentDTO = {
+//   id?: number;
+//   groupRequestId: number;
+//   amount: string;
+//   dueDate: string;
+//   status?: PaymentStatus;
+//   reference?: string;
+// };
+
+// /** ===== Segments for public itinerary ===== */
+// export type Segment = {
+//   from: string;               // IATA
+//   to: string;                 // IATA
+//   date: string;               // yyyy-mm-dd
+//   extras?: {
+//     extraBaggageKg?: number;
+//     meal?: string;
+//     notes?: string;
+//   };
+// };
+
+// /** ===== Dashboard ===== */
+// export type DashboardStatsDTO = {
+//   newRequestsSinceLogin: number;
+//   expiringQuotationsToday: number;
+//   confirmedGroupsWithPaymentsDueToday: number;
+//   quotationsForFollowUpToday: number;
+// };
+// export const fetchDashboard = () => api.get<DashboardStatsDTO>("/api/dashboard/stats");
+
+// /** ===== Admin endpoints ===== */
+// export const listGroupRequests = (page=0, size=20) =>
+//   api.get(`/api/group-requests?page=${page}&size=${size}`);
+// export const getGroupRequest = (id: number) =>
+//   api.get<GroupRequestDTO>(`/api/group-requests/${id}`);
+
+// export type GroupRequestDetails = {
+//   request: GroupRequestDTO;
+//   quotations: QuotationDTO[];
+//   payments: PaymentDTO[];
+//   segments: Segment[];
+// };
+// export const getGroupRequestDetails = (id: number) =>
+//   api.get<GroupRequestDetails>(`/api/group-requests/${id}/details`);
+
+// export const createGroupRequest = (dto: GroupRequestDTO) =>
+//   api.post<GroupRequestDTO>("/api/group-requests", dto);
+// export const updateGroupRequest = (id: number, dto: GroupRequestDTO) =>
+//   api.put<GroupRequestDTO>(`/api/group-requests/${id}`, dto);
+// export const deleteGroupRequest = (id: number) =>
+//   api.delete(`/api/group-requests/${id}`);
+
+// export const sendGroupRequestToRC = (id: number) =>
+//   api.patch(`/api/group-requests/${id}/send-to-rc`);
+// export const markGroupRequestTicketed = (id: number) =>
+//   api.patch(`/api/group-requests/${id}/mark-ticketed`);
+
+// /** ===== Quotations ===== */
+// export const listQuotations = (page=0, size=20) =>
+//   api.get(`/api/quotations?page=${page}&size=${size}`);
+// export const getQuotation = (id: number) =>
+//   api.get<QuotationDTO>(`/api/quotations/${id}`);
+// export const createQuotation = (dto: QuotationDTO) =>
+//   api.post<QuotationDTO>("/api/quotations", dto);
+// export const updateQuoteStatus = (id: number, status: QuotationStatus, approvedBy?: string) =>
+//   api.patch<QuotationDTO>(`/api/quotations/${id}/status?status=${status}${approvedBy ? `&approvedBy=${encodeURIComponent(approvedBy)}` : ""}`);
+// export const resendQuotation = (id: number, dto: QuotationDTO) =>
+//   api.patch<QuotationDTO>(`/api/quotations/${id}/resend`, dto);
+// export const sendQuotationToAgent = (id: number) =>
+//   api.patch<QuotationDTO>(`/api/quotations/${id}/send-to-agent`);
+// export const acceptQuotation = (id: number) =>
+//   api.patch<QuotationDTO>(`/api/quotations/${id}/accept`);
+
+// /** ===== Payments ===== */
+// export const listPayments = (page=0, size=20) =>
+//   api.get(`/api/payments?page=${page}&size=${size}`);
+// export const markPaymentPaid = (id: number, reference?: string) =>
+//   api.patch<PaymentDTO>(`/api/payments/${id}/mark-paid${reference ? `?reference=${encodeURIComponent(reference)}` : ""}`);
+
+// /** ===== Public form payload + endpoint ===== */
+// export type PublicGroupRequest = {
+//   salutation: Salutation;
+//   firstName: string;
+//   lastName: string;
+//   email: string;
+//   contactNumber: string;
+
+//   fromAirport: string;
+//   toAirport: string;
+//   routing: RoutingType;
+
+//   departureDate: string;
+//   returnDate?: string;
+
+//   paxAdult: number;
+//   paxChild: number;
+//   paxInfant: number;
+
+//   groupType: GroupType;
+//   flightNumber?: string;
+//   specialRequest?: string;
+
+//   currency: string;
+//   posCode: string;
+//   category: RequestCategory;
+//   partnerId?: string;
+// };
+
+// export type PublicGroupRequestWithSegments = PublicGroupRequest & {
+//   segments: Segment[];
+// };
+
+// export const submitPublicGroupRequestWithSegments = (payload: PublicGroupRequestWithSegments) =>
+//   api.post<GroupRequestDTO>("/api/public/group-requests", payload);
+
+
+
+
+// // auth
+
+
+// import { Navigate } from "react-router-dom";
+// import { useAuthStore, type Role } from "./store";
+
+// export default function ProtectedRoute({
+//   children,
+//   roles,
+// }: {
+//   children: JSX.Element;
+//   roles?: Role[];
+// }): JSX.Element {
+//   const { token, role } = useAuthStore();
+//   if (!token) return <Navigate to="/login" replace />;
+//   if (roles && role && !roles.includes(role)) return <Navigate to="/" replace />;
+//   return children;
+// }
+
+
+// import { create } from "zustand";
+
+// export type Role = "GROUP_DESK" | "ROUTE_CONTROLLER" | "ADMIN";
+
+// type State = {
+//   token: string | null;
+//   role: Role | null;
+//   username: string | null;
+//   login: (token: string, role: Role, username: string) => void;
+//   logout: () => void;
+// };
+
+// export const useAuthStore = create<State>((set) => ({
+//   token: null,
+//   role: null,
+//   username: null,
+//   login: (token, role, username) => set({ token, role, username }),
+//   logout: () => set({ token: null, role: null, username: null }),
+// }));
+
+
+
+// // components
+
+// import { useEffect, useRef, useState } from "react";
+// import { AIRPORTS } from "@/data/airports";
+
+// export default function AirportSelect({
+//     value,
+//     onChange,
+//     placeholder = "City or airport",
+// }: {
+//     value: string;
+//     onChange: (code: string) => void;
+//     placeholder?: string;
+// }): JSX.Element {
+//     const [open, setOpen] = useState(false);
+//     const ref = useRef<HTMLDivElement>(null);
+
+//     useEffect(() => {
+//         const close = (e: MouseEvent) => {
+//             if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+//         };
+//         document.addEventListener("mousedown", close);
+//         return () => document.removeEventListener("mousedown", close);
+//     }, []);
+
+//     return (
+//         <div ref={ref} className="relative">
+//             <button
+//                 type="button"
+//                 className="input flex items-center justify-between font-medium tracking-widest"
+//                 onClick={() => setOpen((o) => !o)}
+//             >
+//                 <span className={value ? "opacity-100" : "opacity-50"}>{value || placeholder}</span>
+//                 <svg className={`w-4 h-4 transition ${open ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none">
+//                     <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+//                 </svg>
+//             </button>
+
+//             {open && (
+//                 <div className="absolute z-20 mt-2 w-full bg-card border border-border rounded-2xl shadow-soft max-h-72 overflow-auto">
+//                     {AIRPORTS.map((a) => (
+//                         <button
+//                             key={a.code}
+//                             type="button"
+//                             className="w-full text-left px-3 py-2 hover:bg-muted/60 flex items-center gap-3"
+//                             onClick={() => { onChange(a.code); setOpen(false); }}
+//                         >
+//                             <div className="w-12 font-semibold tracking-widest">{a.code}</div>
+//                             <div className="flex-1">
+//                                 <div className="font-medium">{a.city}</div>
+//                                 <div className="text-xs text-muted-foreground">{a.country}</div>
+//                             </div>
+//                         </button>
+//                     ))}
+//                 </div>
+//             )}
+//         </div>
+//     );
+// }
+
+
+
+// import { useEffect } from "react";
+// import { POS_LIST } from "@/data/pos";
+// import type { RequestCategory } from "@/api/endpoints";
+
+// export default function PosSelect({
+//     value,
+//     onChange,
+//     category,
+//     placeholder = "Select POS (e.g., LK)",
+// }: {
+//     value: string;
+//     onChange: (code: string) => void;
+//     category?: RequestCategory;
+//     placeholder?: string;
+// }): JSX.Element {
+//     const isCustomerCare = category === "CUSTOMER_CARE";
+
+//     // Auto-lock POS to LK-CC for Customer Care
+//     useEffect(() => {
+//         if (isCustomerCare && value !== "LK-CC") onChange("LK-CC");
+//     }, [isCustomerCare, value, onChange]);
+
+//     return (
+//         <div>
+//             <select
+//                 className="input-select"
+//                 value={isCustomerCare ? "LK-CC" : value}
+//                 onChange={(e) => onChange(e.target.value)}
+//                 disabled={isCustomerCare}
+//             >
+//                 {!value && !isCustomerCare && <option value="">{placeholder}</option>}
+
+//                 {/* Show LK-CC first if locked, otherwise show the regular countries list */}
+//                 {isCustomerCare ? (
+//                     <option value="LK-CC">LK-CC — Sri Lanka — Customer Care</option>
+//                 ) : (
+//                     POS_LIST
+//                         .filter(p => p.code !== "LK-CC") // keep CC out of regular choices
+//                         .map(p => (
+//                             <option key={p.code} value={p.code}>
+//                                 {p.code} — {p.name}
+//                             </option>
+//                         ))
+//                 )}
+//             </select>
+
+//             {isCustomerCare && (
+//                 <p className="text-xs text-gray-500 mt-1">
+//                     POS is fixed to <span className="font-medium">LK-CC</span> for Customer Care requests.
+//                 </p>
+//             )}
+//         </div>
+//     );
+// }
+
+
+
+// import { Link, useLocation } from "react-router-dom";
+// import { useAuthStore } from "@/auth/store";
+
+// const nav = [
+//     { to: "/", label: "Dashboard" },
+//     { to: "/group-requests", label: "Group Requests" },
+//     { to: "/quotations", label: "Quotations" },
+//     { to: "/payments", label: "Payments" },
+// ];
+
+// export default function RootLayout({ children }: { children: React.ReactNode }): JSX.Element {
+//     const { pathname } = useLocation();
+//     const { logout, username, role } = useAuthStore();
+
+//     return (
+//         <div className="min-h-screen grid grid-cols-[240px_1fr]">
+//             <aside className="bg-gray-100 p-4">
+//                 <h1 className="font-bold mb-1">FitsAir – Admin</h1>
+//                 <div className="text-xs mb-4 text-gray-600">{username ?? "User"} {role ? `· ${role}` : ""}</div>
+//                 <nav className="space-y-1">
+//                     {nav.map(n => (
+//                         <Link key={n.to} to={n.to}
+//                             className={`block rounded px-3 py-2 ${pathname === n.to ? "bg-gray-900 text-white" : "hover:bg-gray-200"}`}>
+//                             {n.label}
+//                         </Link>
+//                     ))}
+//                 </nav>
+//                 <button onClick={logout} className="mt-6 text-sm text-red-600">Log out</button>
+//             </aside>
+//             <main className="p-6 bg-white">
+//                 {children}
+//             </main>
+//         </div>
+//     );
+// }
+
+
+
+// import AirportSelect from "./AirportSelect";
+// import type { Segment } from "@/api/endpoints";
+
+// const HUB = "CMB"; // FitsAir hub
+
+// export default function SegmentsBuilder({
+//     value,
+//     onChange,
+// }: {
+//     value: Segment[];
+//     onChange: (s: Segment[]) => void;
+// }): JSX.Element {
+
+//     function addBlank() {
+//         onChange([...value, { from: "", to: "", date: "", extras: {} }]);
+//     }
+//     function remove(i: number) {
+//         const copy = value.slice(); copy.splice(i, 1); onChange(copy);
+//     }
+//     function swap(i: number) {
+//         const copy = value.slice();
+//         const seg = copy[i];
+//         copy[i] = { ...seg, from: seg.to, to: seg.from };
+//         onChange(copy);
+//     }
+//     function update(i: number, seg: Partial<Segment>) {
+//         const copy = value.slice();
+//         copy[i] = { ...copy[i], ...seg };
+//         onChange(copy);
+//     }
+
+//     /** Auto-split non-HUB→non-HUB into from→CMB and CMB→to on blur */
+//     function autoSplit(i: number) {
+//         const seg = value[i];
+//         const from = (seg.from || "").toUpperCase();
+//         const to = (seg.to || "").toUpperCase();
+//         if (!from || !to || from === to) return;
+//         if (from !== HUB && to !== HUB) {
+//             const copy = value.slice();
+//             copy.splice(i, 1,
+//                 { from, to: HUB, date: "", extras: {} },
+//                 { from: HUB, to, date: "", extras: {} }
+//             );
+//             onChange(copy);
+//         }
+//     }
+
+//     return (
+//         <div className="space-y-3">
+//             {value.map((seg, i) => (
+//                 <div key={i} className="grid grid-cols-[1fr_1fr_180px_40px] items-start gap-3 border rounded-xl p-3">
+//                     <div>
+//                         <div className="text-sm text-gray-600">From</div>
+//                         <AirportSelect value={seg.from} onChange={(v) => update(i, { from: v })} />
+//                     </div>
+//                     <div>
+//                         <div className="text-sm text-gray-600">To</div>
+//                         <AirportSelect value={seg.to} onChange={(v) => update(i, { to: v })} />
+//                     </div>
+//                     <div>
+//                         <div className="text-sm text-gray-600">Depart</div>
+//                         <input className="w-full border rounded px-3 py-2" type="date"
+//                             value={seg.date} onChange={e => update(i, { date: e.target.value })}
+//                             onBlur={() => autoSplit(i)} />
+//                     </div>
+//                     <div className="flex items-center justify-center">
+//                         <button type="button" title="Swap" onClick={() => swap(i)}
+//                             className="w-8 h-8 rounded-full border flex items-center justify-center">⇄</button>
+//                     </div>
+
+//                     {/* per-leg extras */}
+//                     <div className="col-span-4 grid md:grid-cols-3 gap-3">
+//                         <div>
+//                             <div className="text-xs text-gray-500">Extra baggage (kg)</div>
+//                             <input className="w-full border rounded px-3 py-2" type="number" min={0}
+//                                 value={seg.extras?.extraBaggageKg ?? ""}
+//                                 onChange={(e) => update(i, { extras: { ...seg.extras, extraBaggageKg: Number(e.target.value) } })} />
+//                         </div>
+//                         <div>
+//                             <div className="text-xs text-gray-500">Meal preference</div>
+//                             <input className="w-full border rounded px-3 py-2" placeholder="VEG / NON / HALAL / …"
+//                                 value={seg.extras?.meal ?? ""} onChange={(e) => update(i, { extras: { ...seg.extras, meal: e.target.value } })} />
+//                         </div>
+//                         <div>
+//                             <div className="text-xs text-gray-500">Notes</div>
+//                             <input className="w-full border rounded px-3 py-2" placeholder="Wheelchair, sports gear…"
+//                                 value={seg.extras?.notes ?? ""} onChange={(e) => update(i, { extras: { ...seg.extras, notes: e.target.value } })} />
+//                         </div>
+//                     </div>
+
+//                     <div className="col-span-4 flex justify-end">
+//                         <button type="button" className="text-red-700 text-sm" onClick={() => remove(i)}>Remove</button>
+//                     </div>
+//                 </div>
+//             ))}
+
+//             <button type="button" className="bg-gray-900 text-white rounded px-3 py-2" onClick={addBlank}>
+//                 + Add segment
+//             </button>
+//         </div>
+//     );
+// }
+
+
+
+// import { useEffect, useState } from "react";
+
+// export default function ThemeToggle(): JSX.Element {
+//     const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
+
+//     useEffect(() => {
+//         const root = document.documentElement;
+//         if (dark) { root.classList.add("theme-dark"); localStorage.setItem("theme", "dark"); }
+//         else { root.classList.remove("theme-dark"); localStorage.setItem("theme", "light"); }
+//     }, [dark]);
+
+//     return (
+//         <button className="btn-ghost" onClick={() => setDark(v => !v)}>
+//             {dark ? "☀️ Light" : "🌙 Dark"}
+//         </button>
+//     );
+// }
+
+
+
+// //data
+
+// export type Airport = { code: string; city: string; country: string };
+
+// export const AIRPORTS: Airport[] = [
+//     { code: "CMB", city: "Colombo", country: "Sri Lanka" },
+//     { code: "DAC", city: "Dhaka", country: "Bangladesh" },
+//     { code: "KUL", city: "Kuala Lumpur", country: "Malaysia" },
+//     { code: "MLE", city: "Male", country: "Maldives" },
+//     { code: "DXB", city: "Dubai", country: "United Arab Emirates" },
+// ];
+
+
+// export type POS = { code: string; name: string; alias?: string[] };
+
+// export const POS_LIST: POS[] = [
+//     { code: "LK", name: "Sri Lanka" },
+//     { code: "BD", name: "Bangladesh", alias: ["BG"] }, // accept BG but submit BD
+//     { code: "AE", name: "United Arab Emirates" },
+//     { code: "MV", name: "Maldives" },
+//     { code: "IN", name: "India" },
+//     { code: "SG", name: "Singapore" },
+//     { code: "KUL", name: "Kuala Lumpur" },
+
+
+//     // Special POS for Customer Care
+//     { code: "LK-CC", name: "Sri Lanka — Customer Care" },
+// ];
+
+// export function normalizePos(input: string): string {
+//     const up = (input || "").toUpperCase();
+//     if (up === "BG") return "BD";
+//     // Allow passthrough for hyphenated POS like LK-CC
+//     const hit = POS_LIST.find(p => p.code === up || p.alias?.includes(up));
+//     return hit?.code ?? up;
+// }
+
+
+// //pages
+
+
+// import { useEffect, useState } from "react";
+// import { fetchDashboard, type DashboardStatsDTO } from "@/api/endpoints";
+
+// export default function Dashboard(): JSX.Element {
+//     const [data, setData] = useState<DashboardStatsDTO | null>(null);
+
+//     useEffect(() => {
+//         fetchDashboard().then(r => setData(r.data)).catch(() => setData(null));
+//     }, []);
+
+//     return (
+//         <div>
+//             <h2 className="text-2xl font-semibold mb-4">Dashboard</h2>
+//             <div className="grid md:grid-cols-4 gap-4">
+//                 <Kpi label="New Requests Since Login" value={data?.newRequestsSinceLogin ?? 0} />
+//                 <Kpi label="Quotes Expiring Today" value={data?.expiringQuotationsToday ?? 0} />
+//                 <Kpi label="Confirmed Groups with Payments Due" value={data?.confirmedGroupsWithPaymentsDueToday ?? 0} />
+//                 <Kpi label="Quotes to Follow Up Today" value={data?.quotationsForFollowUpToday ?? 0} />
+//             </div>
+//         </div>
+//     );
+// }
+
+// function Kpi({ label, value }: { label: string; value: number }): JSX.Element {
+//     return (
+//         <div className="rounded-xl border p-4">
+//             <div className="text-sm text-gray-500">{label}</div>
+//             <div className="text-3xl font-bold">{value}</div>
+//         </div>
+//     );
+// }
+
+
+
+// import { useEffect, useState, type ReactNode, type ThHTMLAttributes, type TdHTMLAttributes } from "react";
+// import { useParams, useNavigate } from "react-router-dom";
+// import {
+//     getGroupRequestDetails,
+//     sendGroupRequestToRC,
+//     deleteGroupRequest,
+//     createQuotation,
+//     sendQuotationToAgent,
+//     acceptQuotation,
+//     type GroupRequestDetails as Details,
+//     type QuotationDTO
+// } from "@/api/endpoints";
+// import { useAuthStore } from "@/auth/store";
+
+// export default function GroupRequestDetails(): JSX.Element {
+//     const { id } = useParams();
+//     const navigate = useNavigate();
+//     const [data, setData] = useState<Details | null>(null);
+//     const { role } = useAuthStore();
+
+//     async function load(): Promise<void> {
+//         if (!id) return;
+//         const { data } = await getGroupRequestDetails(Number(id));
+//         setData(data);
+//     }
+//     useEffect(() => { void load(); }, [id]);
+
+//     if (!data) return <p>Loading...</p>;
+//     const r = data.request;
+
+//     async function onSendToRC(): Promise<void> {
+//         await sendGroupRequestToRC(Number(id)); await load();
+//     }
+//     async function onProvideQuotation(): Promise<void> {
+//         const totalFare = (window.prompt("Total Fare?") ?? "").trim();
+//         if (!totalFare) return;
+//         const dto: QuotationDTO = {
+//             groupRequestId: Number(id),
+//             totalFare,
+//             createdDate: new Date().toISOString().slice(0, 10),
+//             expiryDate: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+//             status: "DRAFT"
+//         };
+//         await createQuotation(dto); await load();
+//     }
+//     async function onSendToAgent(qid: number): Promise<void> {
+//         await sendQuotationToAgent(qid); await load();
+//     }
+//     async function onAccept(qid: number): Promise<void> {
+//         await acceptQuotation(qid); await load();
+//     }
+//     async function onDelete(): Promise<void> {
+//         if (!confirm("Delete this request?")) return;
+//         await deleteGroupRequest(Number(id)); navigate("/group-requests");
+//     }
+
+//     return (
+//         <div className="space-y-6">
+//             <header className="flex items-center justify-between">
+//                 <div>
+//                     <h2 className="text-2xl font-semibold">Group Request #{r.id}</h2>
+//                     <p className="text-sm text-gray-600">{r.agentName} · {r.route} · Pax {r.paxCount}</p>
+//                 </div>
+//                 <div className="space-x-2">
+//                     {role === "GROUP_DESK" && r.status === "NEW" && (
+//                         <>
+//                             <button className="text-red-700 border px-3 py-1 rounded" onClick={() => void onDelete()}>Delete</button>
+//                             <button className="text-purple-700 border px-3 py-1 rounded" onClick={() => void onSendToRC()}>Send to RC</button>
+//                         </>
+//                     )}
+//                     {role === "ROUTE_CONTROLLER" && r.status === "REVIEWING" && (
+//                         <button className="text-green-700 border px-3 py-1 rounded" onClick={() => void onProvideQuotation()}>
+//                             Provide Quotation
+//                         </button>
+//                     )}
+//                 </div>
+//             </header>
+
+//             <section className="grid md:grid-cols-2 gap-6">
+//                 <Card title="Request Details">
+//                     <Row k="Title" v={r.salutation ?? "-"} />
+//                     <Row k="First name" v={r.firstName ?? "-"} />
+//                     <Row k="Last name" v={r.lastName ?? "-"} />
+//                     <Row k="Email" v={r.contactEmail} />
+//                     <Row k="Phone" v={r.contactNumber ?? "-"} />
+//                     <Row k="From" v={r.fromAirport ?? "-"} />
+//                     <Row k="To" v={r.toAirport ?? "-"} />
+//                     <Row k="Routing" v={r.routing ?? "-"} />
+//                     <Row k="Departure" v={r.departureDate} />
+//                     <Row k="Return" v={r.returnDate ?? "-"} />
+//                     <Row k="Pax (A/C/I)" v={`${r.paxAdult ?? 0}/${r.paxChild ?? 0}/${r.paxInfant ?? 0}`} />
+//                     <Row k="POS" v={r.posCode} />
+//                     <Row k="Currency" v={r.currency ?? "-"} />
+//                     <Row k="Group Type" v={r.groupType ?? "-"} />
+//                     <Row k="Category" v={r.category} />
+//                     <Row k="Partner ID" v={r.partnerId ?? "-"} />
+//                     <Row k="Special Requests" v={r.specialRequest ?? "-"} />
+//                 </Card>
+
+//                 <Card title="Payments">
+//                     <div className="overflow-auto border rounded">
+//                         <table className="min-w-[600px] w-full">
+//                             <thead className="bg-gray-50">
+//                                 <tr><Th>ID</Th><Th>Amount</Th><Th>Due</Th><Th>Status</Th><Th>Ref</Th></tr>
+//                             </thead>
+//                             <tbody>
+//                                 {data.payments.map(p => (
+//                                     <tr key={p.id} className="border-t">
+//                                         <Td>{p.id}</Td><Td>{p.amount}</Td><Td>{p.dueDate}</Td><Td>{p.status}</Td><Td>{p.reference ?? "-"}</Td>
+//                                     </tr>
+//                                 ))}
+//                                 {data.payments.length === 0 && (
+//                                     <tr><Td colSpan={5} className="text-gray-500">No payments yet</Td></tr>
+//                                 )}
+//                             </tbody>
+//                         </table>
+//                     </div>
+//                 </Card>
+//             </section>
+
+//             <section>
+//                 <h3 className="text-lg font-semibold mb-2">Itinerary Segments</h3>
+//                 <div className="overflow-auto border rounded">
+//                     <table className="min-w-[700px] w-full">
+//                         <thead className="bg-gray-50">
+//                             <tr><Th>#</Th><Th>From</Th><Th>To</Th><Th>Depart</Th><Th>Extras</Th></tr>
+//                         </thead>
+//                         <tbody>
+//                             {data.segments.map((s, i) => (
+//                                 <tr key={i} className="border-t">
+//                                     <Td>{i + 1}</Td>
+//                                     <Td>{s.from}</Td>
+//                                     <Td>{s.to}</Td>
+//                                     <Td>{s.date}</Td>
+//                                     <Td className="text-xs">
+//                                         {[
+//                                             s.extras?.extraBaggageKg ? `Baggage: ${s.extras.extraBaggageKg}kg` : "",
+//                                             s.extras?.meal ? `Meal: ${s.extras.meal}` : "",
+//                                             s.extras?.notes ? `Notes: ${s.extras.notes}` : "",
+//                                         ].filter(Boolean).join(" · ") || "-"}
+//                                     </Td>
+//                                 </tr>
+//                             ))}
+//                             {data.segments.length === 0 && (
+//                                 <tr><Td colSpan={5} className="text-gray-500">No segments</Td></tr>
+//                             )}
+//                         </tbody>
+//                     </table>
+//                 </div>
+//             </section>
+
+//             <section>
+//                 <h3 className="text-lg font-semibold mb-2">Quotations</h3>
+//                 <div className="overflow-auto border rounded">
+//                     <table className="min-w-[900px] w-full">
+//                         <thead className="bg-gray-50">
+//                             <tr><Th>ID</Th><Th>Total</Th><Th>Created</Th><Th>Expiry</Th><Th>Status</Th><Th>ApprovedBy</Th><Th></Th></tr>
+//                         </thead>
+//                         <tbody>
+//                             {data.quotations.map(q => (
+//                                 <tr key={q.id} className="border-t">
+//                                     <Td>{q.id}</Td><Td>{q.totalFare}</Td><Td>{q.createdDate}</Td>
+//                                     <Td>{q.expiryDate}</Td><Td>{q.status}</Td><Td>{q.approvedBy ?? "-"}</Td>
+//                                     <Td className="space-x-3">
+//                                         {role === "GROUP_DESK" && q.id && (
+//                                             <>
+//                                                 <button className="text-indigo-700 text-sm" onClick={() => void onSendToAgent(q.id!)}>Send to Agent</button>
+//                                                 <button className="text-green-700 text-sm" onClick={() => void onAccept(q.id!)}>Accept</button>
+//                                             </>
+//                                         )}
+//                                     </Td>
+//                                 </tr>
+//                             ))}
+//                             {data.quotations.length === 0 && (
+//                                 <tr><Td colSpan={7} className="text-gray-500">No quotations yet</Td></tr>
+//                             )}
+//                         </tbody>
+//                     </table>
+//                 </div>
+//             </section>
+//         </div>
+//     );
+// }
+
+// function Card({ title, children }: { title: string; children: ReactNode }): JSX.Element {
+//     return (
+//         <div className="border rounded-xl p-4">
+//             <div className="font-semibold mb-2">{title}</div>
+//             {children}
+//         </div>
+//     );
+// }
+// function Row({ k, v }: { k: string; v: string }): JSX.Element {
+//     return (
+//         <div className="grid grid-cols-3 gap-2 py-1">
+//             <div className="text-sm text-gray-600">{k}</div>
+//             <div className="col-span-2 text-sm">{v}</div>
+//         </div>
+//     );
+// }
+// function Th({ children, className = "", ...rest }:
+//     ThHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
+//     return <th className={`text-left text-xs font-semibold text-gray-600 px-3 py-2 ${className}`} {...rest}>{children}</th>;
+// }
+// function Td({ children, className = "", ...rest }:
+//     TdHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
+//     return <td className={`px-3 py-2 text-sm ${className}`} {...rest}>{children}</td>;
+// }
+
+
+
+// import { useEffect, useState, type ReactNode, type ThHTMLAttributes, type TdHTMLAttributes } from "react";
+// import { Link } from "react-router-dom";
+// import {
+//     createGroupRequest,
+//     deleteGroupRequest,
+//     listGroupRequests,
+//     updateGroupRequest,
+//     sendGroupRequestToRC,
+//     type GroupRequestDTO
+// } from "@/api/endpoints";
+// import { extractContent, type Page } from "@/types/page";
+// import { useAuthStore } from "@/auth/store";
+
+// export default function GroupRequests(): JSX.Element {
+//     const [rows, setRows] = useState<GroupRequestDTO[]>([]);
+//     const [loading, setLoading] = useState<boolean>(false);
+//     const { role } = useAuthStore();
+
+//     async function load(): Promise<void> {
+//         setLoading(true);
+//         try {
+//             const { data } = await listGroupRequests(0, 50);
+//             setRows(extractContent<GroupRequestDTO>(data as GroupRequestDTO[] | Page<GroupRequestDTO>));
+//         } finally { setLoading(false); }
+//     }
+//     useEffect(() => { void load(); }, []);
+
+//     // async function onQuickAdd(): Promise<void> {
+//     //     const dto: GroupRequestDTO = {
+//     //         agentName: "Demo Agent",
+//     //         route: "CMB-DXB",
+//     //         paxCount: 25,
+//     //         requestDate: new Date().toISOString().slice(0, 10),
+//     //         category: "NORMAL",
+//     //         status: "NEW",
+//     //         posCode: "LK",
+//     //         departureDate: new Date(Date.now() + 40 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+//     //         quotedFare: "100000.00",
+//     //         contactEmail: "demo@example.com"
+//     //     };
+//     //     await createGroupRequest(dto); await load();
+//     // }
+
+//     async function onDelete(id: number): Promise<void> {
+//         await deleteGroupRequest(id); await load();
+//     }
+
+//     async function onEdit(r: GroupRequestDTO): Promise<void> {
+//         const agent = prompt("Agent name:", r.agentName) ?? r.agentName;
+//         const route = prompt("Route:", r.route) ?? r.route;
+//         await updateGroupRequest(r.id!, { ...r, agentName: agent, route });
+//         await load();
+//     }
+
+//     async function onSendToRC(id: number): Promise<void> {
+//         await sendGroupRequestToRC(id); await load();
+//     }
+
+//     return (
+//         <div>
+            
+
+//             {loading ? <p>Loading...</p> : (
+//                 <div className="overflow-auto border rounded-xl">
+//                     <table className="min-w-[1100px] w-full">
+//                         <thead className="bg-gray-50">
+//                             <tr>
+//                                 <Th>ID</Th><Th>Agent</Th><Th>Route</Th><Th>Pax</Th>
+//                                 <Th>Req Date</Th><Th>Category</Th><Th>Status</Th>
+//                                 <Th>POS</Th><Th>Departure</Th><Th>Quoted Fare</Th><Th>Email</Th><Th></Th>
+//                             </tr>
+//                         </thead>
+//                         <tbody>
+//                             {rows.map(r => (
+//                                 <tr key={r.id} className="border-t">
+//                                     <Td>{r.id ? <Link className="text-blue-700 underline" to={`/group-requests/${r.id}`}>{r.id}</Link> : "-"}</Td>
+//                                     <Td>{r.agentName}</Td><Td>{r.route}</Td><Td>{r.paxCount}</Td>
+//                                     <Td>{r.requestDate}</Td><Td>{r.category}</Td><Td>{r.status}</Td>
+//                                     <Td>{r.posCode}</Td><Td>{r.departureDate}</Td><Td>{r.quotedFare}</Td><Td>{r.contactEmail}</Td>
+//                                     <Td className="space-x-3">
+//                                         {role === "GROUP_DESK" && r.status === "NEW" && r.id && (
+//                                             <>
+//                                                 <button className="text-blue-700 text-sm" onClick={() => void onEdit(r)}>Edit</button>
+//                                                 <button className="text-red-700 text-sm" onClick={() => void onDelete(r.id!)}>Delete</button>
+//                                                 <button className="text-purple-700 text-sm" onClick={() => void onSendToRC(r.id!)}>Send to RC</button>
+//                                             </>
+//                                         )}
+//                                     </Td>
+//                                 </tr>
+//                             ))}
+//                         </tbody>
+//                     </table>
+//                 </div>
+//             )}
+//         </div>
+//     );
+// }
+
+// function Th({ children, className = "", ...rest }:
+//     ThHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
+//     return <th className={`text-left text-xs font-semibold text-gray-600 px-3 py-2 ${className}`} {...rest}>{children}</th>;
+// }
+// function Td({ children, className = "", ...rest }:
+//     TdHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
+//     return <td className={`px-3 py-2 text-sm ${className}`} {...rest}>{children}</td>;
+// }
+
+
+
+
+// import { useState } from "react";
+// import { useNavigate } from "react-router-dom";
+// import { login } from "@/api/auth";
+// import { useAuthStore } from "@/auth/store";
+
+// export default function Login(): JSX.Element {
+//     const [username, setU] = useState("");
+//     const [password, setP] = useState("");
+//     const [err, setErr] = useState<string>("");
+//     const nav = useNavigate();
+//     const { login: doLogin } = useAuthStore();
+
+//     async function onSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
+//         e.preventDefault(); setErr("");
+//         try {
+//             const res = await login({ username, password });
+//             doLogin(res.token, res.role, username);
+//             nav("/");
+//         } catch {
+//             setErr("Login failed");
+//         }
+//     }
+
+//     return (
+//         <div className="min-h-screen grid place-items-center bg-gray-50">
+//             <form onSubmit={onSubmit} className="w-full max-w-sm bg-white p-6 rounded-xl shadow">
+//                 <h2 className="text-xl font-semibold mb-4">Sign in</h2>
+//                 <input className="mb-2 w-full border rounded px-3 py-2" placeholder="Username" value={username} onChange={e => setU(e.target.value)} />
+//                 <input className="mb-2 w-full border rounded px-3 py-2" type="password" placeholder="Password" value={password} onChange={e => setP(e.target.value)} />
+//                 {err && <p className="text-red-600 text-sm mb-2">{err}</p>}
+//                 <button className="w-full bg-gray-900 text-white rounded px-3 py-2">Login</button>
+//             </form>
+//         </div>
+//     );
+// }
+
+
+
+// import { useEffect, useState } from "react";
+// import { listPayments, markPaymentPaid, type PaymentDTO } from "@/api/endpoints";
+// import { extractContent, type Page } from "@/types/page";
+
+// export default function Payments(): JSX.Element {
+//     const [rows, setRows] = useState<PaymentDTO[]>([]);
+
+//     async function load(): Promise<void> {
+//         const { data } = await listPayments(0, 20);
+//         setRows(extractContent<PaymentDTO>(data as PaymentDTO[] | Page<PaymentDTO>));
+//     }
+
+//     useEffect(() => { void load(); }, []);
+
+//     async function onPaid(id: number): Promise<void> {
+//         const ref = window.prompt("Enter reference (optional) or leave blank") ?? "";
+//         await markPaymentPaid(id, ref.trim() || undefined);
+//         await load();
+//     }
+
+//     return (
+//         <div>
+//             <h2 className="text-2xl font-semibold mb-4">Payments</h2>
+//             <div className="overflow-auto border rounded-xl">
+//                 <table className="min-w-[800px] w-full">
+//                     <thead className="bg-gray-50">
+//                         <tr><Th>ID</Th><Th>Group</Th><Th>Amount</Th><Th>Due</Th><Th>Status</Th><Th>Ref</Th><Th>&nbsp;</Th></tr>
+//                     </thead>
+//                     <tbody>
+//                         {rows.map((r) => (
+//                             <tr key={r.id} className="border-t">
+//                                 <Td>{r.id}</Td><Td>{r.groupRequestId}</Td><Td>{r.amount}</Td>
+//                                 <Td>{r.dueDate}</Td><Td>{r.status}</Td><Td>{r.reference ?? "-"}</Td>
+//                                 <Td>{r.status === "PENDING" && r.id && (
+//                                     <button onClick={() => void onPaid(r.id!)} className="text-green-700 text-sm">Mark paid</button>
+//                                 )}</Td>
+//                             </tr>
+//                         ))}
+//                     </tbody>
+//                 </table>
+//             </div>
+//         </div>
+//     );
+// }
+// function Th({ children }: { children: React.ReactNode }): JSX.Element { return <th className="text-left text-xs font-semibold text-gray-600 px-3 py-2">{children}</th>; }
+// function Td({ children }: { children: React.ReactNode }): JSX.Element { return <td className="px-3 py-2 text-sm">{children}</td>; }
+
+
+
+// import { useEffect, useMemo, useState } from "react";
+// import AirportSelect from "@/components/AirportSelect";
+// import {
+//     submitPublicGroupRequestWithSegments,
+//     type PublicGroupRequest,
+//     type PublicGroupRequestWithSegments,
+//     type RequestCategory,
+//     type RoutingType,
+//     type GroupType,
+//     type Salutation,
+//     type Segment,
+// } from "@/api/endpoints";
+// import "@/styles/public-form.css"; // <-- add this import
+// import PosSelect from "@/components/PosSelect";
+// import { normalizePos } from "@/data/pos";
+
+// const HUB = "CMB";
+// const salutations: Salutation[] = ["MR", "MRS", "MISS", "MS", "DR", "PROF", "OTHER"];
+// const categories: RequestCategory[] = ["NORMAL", "GSA", "CUSTOMER_CARE", "AGENT"];
+// const groupTypes: GroupType[] = ["EDUCATION", "CONFERENCE", "SPORTS", "PILGRIMAGE", "MICE", "OTHER"];
+
+// export default function PublicGroupBookingForm(): JSX.Element {
+//     const [form, setForm] = useState<PublicGroupRequest>({
+//         salutation: "MR",
+//         firstName: "",
+//         lastName: "",
+//         email: "",
+//         contactNumber: "",
+//         fromAirport: "",
+//         toAirport: "",
+//         routing: "ONE_WAY",
+//         departureDate: "",
+//         returnDate: "",
+//         paxAdult: 1,
+//         paxChild: 0,
+//         paxInfant: 0,
+//         groupType: "EDUCATION",
+//         flightNumber: "",
+//         specialRequest: "",
+//         currency: "LKR",
+//         posCode: "LK",
+//         category: "NORMAL",
+//         partnerId: "",
+//     });
+
+//     const [segments, setSegments] = useState<Segment[]>([{ from: "", to: "", date: "", extras: {} }]);
+//     const [activeSection, setActiveSection] = useState<"contact" | "trip" | "passengers" | "other">("contact");
+//     const [submitted, setSubmitted] = useState(false);
+//     const [err, setErr] = useState("");
+
+//     const isForcedMultiCity = useMemo(
+//         () =>
+//             !!form.fromAirport &&
+//             !!form.toAirport &&
+//             form.fromAirport.toUpperCase() !== HUB &&
+//             form.toAirport.toUpperCase() !== HUB,
+//         [form.fromAirport, form.toAirport]
+//     );
+
+//     function replan(from: string, to: string, routing: RoutingType, old: Segment[]): Segment[] {
+//         const F = from?.toUpperCase() || "";
+//         const T = to?.toUpperCase() || "";
+//         if (!F || !T || F === T) return [{ from: F, to: T, date: "", extras: {} }];
+
+//         const plan: Segment[] = [];
+//         if (routing === "ONE_WAY") {
+//             if (F === HUB || T === HUB) plan.push({ from: F, to: T, date: "", extras: {} });
+//             else plan.push({ from: F, to: HUB, date: "", extras: {} }, { from: HUB, to: T, date: "", extras: {} });
+//         } else {
+//             if (F === HUB || T === HUB)
+//                 plan.push({ from: F, to: T, date: "", extras: {} }, { from: T, to: F, date: "", extras: {} });
+//             else
+//                 plan.push(
+//                     { from: F, to: HUB, date: "", extras: {} },
+//                     { from: HUB, to: T, date: "", extras: {} },
+//                     { from: T, to: HUB, date: "", extras: {} },
+//                     { from: HUB, to: F, date: "", extras: {} }
+//                 );
+//         }
+//         // keep any dates/extras already typed
+//         return plan.map((s, i) => ({ ...s, date: old[i]?.date ?? "", extras: old[i]?.extras ?? {} }));
+//     }
+
+//     useEffect(() => {
+//         setSegments((old) => replan(form.fromAirport, form.toAirport, form.routing, old));
+//     }, [form.fromAirport, form.toAirport, form.routing]);
+
+//     function setF<K extends keyof PublicGroupRequest>(key: K, val: PublicGroupRequest[K]) {
+//         setForm((p) => ({ ...p, [key]: val }));
+//     }
+
+//     const totalPax = () => (form.paxAdult || 0) + (form.paxChild || 0) + (form.paxInfant || 0);
+//     const routingForPayload: RoutingType = isForcedMultiCity ? "MULTICITY" : form.routing;
+
+//     async function onSubmit(e: React.FormEvent) {
+//         e.preventDefault();
+//         setErr("");
+
+//         if (!form.firstName || !form.lastName) return setErr("Please enter your name.");
+//         if (totalPax() < 1) return setErr("Total passengers must be at least 1.");
+//         if (!form.fromAirport || !form.toAirport) return setErr("Please select origin and destination.");
+//         if ((form.category === "GSA" || form.category === "CUSTOMER_CARE") && !form.partnerId)
+//             return setErr("Please enter the Partner / Customer Care ID.");
+//         if (segments.some((s) => !s.date)) return setErr("Please set a date for each segment.");
+
+//         const departureDate = segments[0]?.date || "";
+//         const returnDate = form.routing === "RETURN" ? segments.at(-1)?.date || "" : undefined;
+
+//         const payload: PublicGroupRequestWithSegments = {
+//             ...form,
+//             fromAirport: form.fromAirport.toUpperCase(),
+//             toAirport: form.toAirport.toUpperCase(),
+//             routing: routingForPayload,
+//             departureDate,
+//             returnDate,
+//             currency: form.currency.toUpperCase(),
+//             posCode: normalizePos(form.posCode), // <-- normalize here
+//             segments,
+//         };
+
+//         try {
+//             await submitPublicGroupRequestWithSegments(payload);
+//             setSubmitted(true);
+//         } catch {
+//             setErr("Sorry, we couldn't submit your request. Please try again.");
+//         }
+//     }
+
+//     if (submitted) return <Success />;
+
+//     const sections = [
+//         { id: "contact", title: "Contact Information" },
+//         { id: "trip", title: "Trip Details" },
+//         { id: "passengers", title: "Passengers & Group" },
+//         { id: "other", title: "Additional Information" },
+//     ] as const;
+
+//     return (
+//         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4 md:p-6">
+//             <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+//                 {/* Header */}
+//                 <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 md:p-8">
+//                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+//                         <div>
+//                             <h1 className="text-2xl md:text-3xl font-bold">Group Booking Request</h1>
+//                             <p className="text-blue-100 mt-2">Get the best rates for your group travel</p>
+//                         </div>
+//                         <div className="bg-blue-500/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium inline-flex items-center gap-2 self-start">
+//                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+//                             </svg>
+//                             Secure & Encrypted
+//                         </div>
+//                     </div>
+//                 </div>
+
+//                 {/* Progress Navigation */}
+//                 <div className="border-b border-gray-200">
+//                     <div className="flex overflow-x-auto">
+//                         {sections.map((section, index) => (
+//                             <button
+//                                 key={section.id}
+//                                 type="button"
+//                                 onClick={() => setActiveSection(section.id)}
+//                                 className={`flex-1 min-w-[120px] px-4 py-3 text-sm font-medium transition-colors ${activeSection === section.id
+//                                     ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+//                                     : "text-gray-500 hover:text-gray-700"
+//                                     }`}
+//                             >
+//                                 <div className="flex items-center gap-2 justify-center">
+//                                     <div
+//                                         className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${activeSection === section.id ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
+//                                             }`}
+//                                     >
+//                                         {index + 1}
+//                                     </div>
+//                                     <span className="hidden sm:inline">{section.title}</span>
+//                                 </div>
+//                             </button>
+//                         ))}
+//                     </div>
+//                 </div>
+
+//                 <form onSubmit={onSubmit} className="p-6 md:p-8 space-y-8">
+//                     {/* Contact */}
+//                     {activeSection === "contact" && (
+//                         <Section title="Contact Information" description="Tell us how we can reach you">
+//                             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+//                                 <Field label="Title" required>
+//                                     <select className="input-select" value={form.salutation} onChange={(e) => setF("salutation", e.target.value as Salutation)}>
+//                                         {salutations.map((x) => (
+//                                             <option key={x} value={x}>
+//                                                 {x}
+//                                             </option>
+//                                         ))}
+//                                     </select>
+//                                 </Field>
+//                                 <Field label="First name" required>
+//                                     <input className="input" value={form.firstName} onChange={(e) => setF("firstName", e.target.value)} placeholder="Enter your first name" />
+//                                 </Field>
+//                                 <Field label="Last name" required>
+//                                     <input className="input" value={form.lastName} onChange={(e) => setF("lastName", e.target.value)} placeholder="Enter your last name" />
+//                                 </Field>
+//                                 <Field label="Email" required>
+//                                     <input className="input" type="email" value={form.email} onChange={(e) => setF("email", e.target.value)} placeholder="your.email@example.com" />
+//                                 </Field>
+//                                 <Field label="Contact number" required>
+//                                     <input className="input" value={form.contactNumber} onChange={(e) => setF("contactNumber", e.target.value)} placeholder="+94 77 123 4567" />
+//                                 </Field>
+//                                 <Field label="Category">
+//                                     <select className="input-select" value={form.category} onChange={(e) => setF("category", e.target.value as RequestCategory)}>
+//                                         {categories.map((x) => (
+//                                             <option key={x} value={x}>
+//                                                 {x.replace("_", " ")}
+//                                             </option>
+//                                         ))}
+//                                     </select>
+//                                 </Field>
+//                                 {(form.category === "GSA" || form.category === "CUSTOMER_CARE") && (
+//                                     <Field label="Partner / Customer Care ID" required>
+//                                         <input className="input" value={form.partnerId ?? ""} onChange={(e) => setF("partnerId", e.target.value)} placeholder="Enter your partner ID" />
+//                                     </Field>
+//                                 )}
+//                                 <Field label="POS Country" required>
+//                                     <PosSelect
+//                                         value={form.posCode}
+//                                         onChange={(v) => setF("posCode", v)}
+//                                         category={form.category}   // <-- tells the dropdown when to lock
+//                                     />
+//                                 </Field>
+//                             </div>
+//                         </Section>
+//                     )}
+//                     {/* Trip */}
+//                     {activeSection === "trip" && (
+//                         <Section title="Trip Details" description="Where and when are you traveling?">
+//                             <div className="space-y-6">
+//                                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+//                                     <Field label="From Airport" required>
+//                                         <AirportSelect value={form.fromAirport} onChange={(v) => setF("fromAirport", v)} placeholder="Select origin (e.g., CMB)" />
+//                                     </Field>
+//                                     <Field label="To Airport" required>
+//                                         <AirportSelect value={form.toAirport} onChange={(v) => setF("toAirport", v)} placeholder="Select destination (e.g., KUL)" />
+//                                     </Field>
+//                                     <Field label="Trip Type">
+//                                         <div className="flex gap-2">
+//                                             <button
+//                                                 type="button"
+//                                                 className={`btn-tab ${form.routing === "ONE_WAY" ? "btn-tab-active" : ""}`}
+//                                                 onClick={() => setF("routing", "ONE_WAY")}
+//                                             >
+//                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+//                                                 </svg>
+//                                                 One Way
+//                                             </button>
+//                                             <button
+//                                                 type="button"
+//                                                 className={`btn-tab ${form.routing === "RETURN" ? "btn-tab-active" : ""}`}
+//                                                 onClick={() => setF("routing", "RETURN")}
+//                                             >
+//                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+//                                                 </svg>
+//                                                 Return
+//                                             </button>
+//                                         </div>
+//                                     </Field>
+//                                 </div>
+
+//                                 {isForcedMultiCity && (
+//                                     <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+//                                         <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+//                                         </svg>
+//                                         <div>
+//                                             <p className="font-medium text-blue-900">Multi-City Routing</p>
+//                                             <p className="text-blue-700 text-sm mt-1">
+//                                                 You've selected a route that requires connecting through {HUB}. We'll automatically plan your journey with the optimal connections.
+//                                             </p>
+//                                         </div>
+//                                     </div>
+//                                 )}
+
+//                                 <div className="space-y-4">
+//                                     <h4 className="font-semibold text-gray-900">Flight Segments</h4>
+//                                     {segments.map((seg, i) => (
+//                                         <SegmentRow
+//                                             key={`${seg.from}-${seg.to}-${i}`}
+//                                             seg={seg}
+//                                             index={i}
+//                                             totalSegments={segments.length}
+//                                             onChange={(s) => {
+//                                                 const copy = segments.slice();
+//                                                 copy[i] = s;
+//                                                 setSegments(copy);
+//                                             }}
+//                                         />
+//                                     ))}
+//                                 </div>
+//                             </div>
+//                         </Section>
+//                     )}
+
+//                     {/* Passengers */}
+//                     {activeSection === "passengers" && (
+//                         <Section title="Passengers & Group" description="Tell us about your group">
+//                             <div className="space-y-6">
+//                                 <div className="grid md:grid-cols-2 lg:grid-cols-6 gap-6">
+//                                     <Field label="Adults">
+//                                         <input className="input-number" type="number" min={0} value={form.paxAdult} onChange={(e) => setF("paxAdult", Number(e.target.value))} />
+//                                     </Field>
+//                                     <Field label="Children">
+//                                         <input className="input-number" type="number" min={0} value={form.paxChild} onChange={(e) => setF("paxChild", Number(e.target.value))} />
+//                                     </Field>
+//                                     <Field label="Infants">
+//                                         <input className="input-number" type="number" min={0} value={form.paxInfant} onChange={(e) => setF("paxInfant", Number(e.target.value))} />
+//                                     </Field>
+//                                     <Field label="Total">
+//                                         <div className="h-12 flex items-center justify-center px-4 border border-gray-300 rounded-xl bg-gray-50 font-semibold text-lg">{totalPax()}</div>
+//                                     </Field>
+//                                     <Field label="Group Type">
+//                                         <select className="input-select" value={form.groupType} onChange={(e) => setF("groupType", e.target.value as GroupType)}>
+//                                             {groupTypes.map((x) => (
+//                                                 <option key={x} value={x}>
+//                                                     {x.replace("_", " ")}
+//                                                 </option>
+//                                             ))}
+//                                         </select>
+//                                     </Field>
+
+//                                 </div>
+
+//                                 <Field label="Special Requests">
+//                                     <textarea
+//                                         className="textarea"
+//                                         rows={3}
+//                                         value={form.specialRequest ?? ""}
+//                                         onChange={(e) => setF("specialRequest", e.target.value)}
+//                                         placeholder="Meal preferences, baggage requirements, accessibility needs, etc."
+//                                     />
+//                                 </Field>
+
+//                             </div>
+//                         </Section>
+//                     )}
+
+//                     {/* Other */}
+//                     {activeSection === "other" && (
+//                         <Section title="Additional Information" description="Final details for your booking">
+//                             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+//                                 <Field label="Currency">
+//                                     <input className="input uppercase" value={form.currency} onChange={(e) => setF("currency", e.target.value)} placeholder="LKR" />
+//                                 </Field>
+//                                 <Field label="Flight Number (Optional)">
+//                                     <input className="input" value={form.flightNumber ?? ""} onChange={(e) => setF("flightNumber", e.target.value)} placeholder="UL 123" />
+//                                 </Field>
+//                             </div>
+//                         </Section>
+//                     )}
+
+//                     {err && (
+//                         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+//                             <p className="text-red-700 font-medium flex items-center gap-2">
+//                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+//                                 </svg>
+//                                 {err}
+//                             </p>
+//                         </div>
+//                     )}
+
+//                     <div className="flex flex-col sm:flex-row gap-4 justify-between items-center pt-6 border-t border-gray-200">
+//                         <div className="flex gap-3">
+//                             {sections.map((section) => (
+//                                 <button
+//                                     key={section.id}
+//                                     type="button"
+//                                     onClick={() => setActiveSection(section.id)}
+//                                     className={`w-3 h-3 rounded-full ${activeSection === section.id ? "bg-blue-600" : "bg-gray-300"}`}
+//                                     aria-label={`Go to ${section.title}`}
+//                                 />
+//                             ))}
+//                         </div>
+
+//                         <div className="flex gap-3">
+//                             {activeSection !== "contact" && (
+//                                 <button
+//                                     type="button"
+//                                     onClick={() => {
+//                                         const i = sections.findIndex((s) => s.id === activeSection);
+//                                         setActiveSection(sections[i - 1]?.id ?? "contact");
+//                                     }}
+//                                     className="btn-secondary"
+//                                 >
+//                                     Previous
+//                                 </button>
+//                             )}
+
+//                             {activeSection !== "other" ? (
+//                                 <button
+//                                     type="button"
+//                                     onClick={() => {
+//                                         const i = sections.findIndex((s) => s.id === activeSection);
+//                                         setActiveSection(sections[i + 1]?.id ?? "other");
+//                                     }}
+//                                     className="btn-primary"
+//                                 >
+//                                     Next
+//                                 </button>
+//                             ) : (
+//                                 <button type="submit" className="btn-primary">
+//                                     Submit Request
+//                                 </button>
+//                             )}
+//                         </div>
+//                     </div>
+//                 </form>
+//             </div>
+//         </div>
+//     );
+// }
+
+// /* ---------- Small UI helpers ---------- */
+// function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+//     return (
+//         <section className="space-y-6">
+//             <div>
+//                 <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+//                 {description && <p className="text-gray-600 mt-1">{description}</p>}
+//             </div>
+//             {children}
+//         </section>
+//     );
+// }
+
+// function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+//     return (
+//         <label className="block">
+//             <div className="flex items-center gap-1 mb-2">
+//                 <span className="text-sm font-medium text-gray-700">{label}</span>
+//                 {required && <span className="text-red-500">*</span>}
+//             </div>
+//             {children}
+//         </label>
+//     );
+// }
+
+// function SegmentRow({
+//     seg,
+//     index,
+//     totalSegments,
+//     onChange,
+// }: {
+//     seg: Segment;
+//     index: number;
+//     totalSegments: number;
+//     onChange: (s: Segment) => void;
+// }) {
+//     return (
+//         <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+//             <div className="flex items-center justify-between mb-4">
+//                 <span className="text-sm font-medium text-gray-700">Segment {index + 1}</span>
+//                 {totalSegments > 1 && (
+//                     <div className="flex items-center gap-2 text-xs text-gray-500">
+//                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+//                         </svg>
+//                         {seg.from} → {seg.to}
+//                     </div>
+//                 )}
+//             </div>
+
+//             <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
+//                 <div>
+//                     <div className="field-label">Departure Date</div>
+//                     <input
+//                         className="input"
+//                         type="date"
+//                         value={seg.date}
+//                         onChange={(e) => onChange({ ...seg, date: e.target.value })}
+//                         min={new Date().toISOString().split("T")[0]}
+//                     />
+//                 </div>
+//                 <div>
+//                     <div className="field-label">Extra Baggage (kg)</div>
+//                     <input
+//                         className="input"
+//                         type="number"
+//                         min={0}
+//                         value={seg.extras?.extraBaggageKg ?? ""}
+//                         placeholder="0"
+//                         onChange={(e) => onChange({ ...seg, extras: { ...seg.extras, extraBaggageKg: Number(e.target.value) } })}
+//                     />
+//                 </div>
+//                 <div className="lg:col-span-3">
+//                     <div className="field-label">Special Requirements</div>
+//                     <input
+//                         className="input"
+//                         placeholder="Vegetarian meals, wheelchair assistance, etc."
+//                         value={[seg.extras?.meal, seg.extras?.notes].filter(Boolean).join(" · ")}
+//                         onChange={(e) => {
+//                             const [meal, ...rest] = e.target.value.split("·").map((s) => s.trim());
+//                             onChange({ ...seg, extras: { ...seg.extras, meal, notes: rest.join(" · ") } });
+//                         }}
+//                     />
+//                 </div>
+//             </div>
+//         </div>
+//     );
+// }
+
+// function Success(): JSX.Element {
+//     return (
+//         <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+//             <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+//                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+//                     <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+//                     </svg>
+//                 </div>
+
+//                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Request Submitted Successfully! 🎉</h2>
+//                 <p className="text-gray-600 mb-6">
+//                     We've received your group booking request. Our dedicated team will contact you within 24 hours with a customized quotation.
+//                 </p>
+
+//                 <div className="bg-blue-50 rounded-xl p-4 mb-6">
+//                     <p className="text-sm text-blue-700">
+//                         <strong>Next steps:</strong> Check your email for a confirmation and keep your phone handy for our call.
+//                     </p>
+//                 </div>
+
+//                 <a href="/" className="btn-primary w-full text-center">
+//                     Back to Homepage
+//                 </a>
+//             </div>
+//         </div>
+//     );
+// }
+
+
+
+
+// import { useEffect, useState, type ReactNode, type ThHTMLAttributes, type TdHTMLAttributes } from "react";
+// import {
+//     createQuotation,
+//     listQuotations,
+//     resendQuotation,
+//     updateQuoteStatus,
+//     sendQuotationToAgent,
+//     acceptQuotation,
+//     type QuotationDTO,
+//     type QuotationStatus
+// } from "@/api/endpoints";
+// import { extractContent, type Page } from "@/types/page";
+// import { useAuthStore } from "@/auth/store";
+
+// export default function Quotations(): JSX.Element {
+//     const [rows, setRows] = useState<QuotationDTO[]>([]);
+//     const { role } = useAuthStore();
+
+//     async function load(): Promise<void> {
+//         const { data } = await listQuotations(0, 50);
+//         setRows(extractContent<QuotationDTO>(data as QuotationDTO[] | Page<QuotationDTO>));
+//     }
+//     useEffect(() => { void load(); }, []);
+
+//     async function onCreate(): Promise<void> {
+//         const groupRequestId = Number(window.prompt("GroupRequest ID?") ?? "1");
+//         const totalFare = (window.prompt("Total Fare?") ?? "100000").trim();
+//         const dto: QuotationDTO = {
+//             groupRequestId,
+//             totalFare,
+//             createdDate: new Date().toISOString().slice(0, 10),
+//             expiryDate: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+//             status: "DRAFT"
+//         };
+//         await createQuotation(dto); await load();
+//     }
+
+//     async function onStatus(id: number): Promise<void> {
+//         const s = (window.prompt("New status? DRAFT|SENT|EXPIRED|ACCEPTED|REJECTED|RESENT", "ACCEPTED") ?? "")
+//             .trim() as QuotationStatus;
+//         const approvedBy = window.prompt("approvedBy (optional)") ?? undefined;
+//         await updateQuoteStatus(id, s, approvedBy || undefined); await load();
+//     }
+
+//     async function onResend(id: number): Promise<void> {
+//         const groupRequestId = Number(window.prompt("Same GroupRequest ID (or enter new)?") ?? "1");
+//         const totalFare = (window.prompt("New Total Fare?") ?? "110000").trim();
+//         const dto: QuotationDTO = {
+//             groupRequestId,
+//             totalFare,
+//             createdDate: new Date().toISOString().slice(0, 10),
+//             expiryDate: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+//             status: "DRAFT"
+//         };
+//         await resendQuotation(id, dto); await load();
+//     }
+
+//     async function onSendToAgent(id: number): Promise<void> {
+//         await sendQuotationToAgent(id); await load();
+//     }
+
+//     async function onAccept(id: number): Promise<void> {
+//         await acceptQuotation(id); await load();
+//     }
+
+//     return (
+//         <div>
+//             <div className="flex items-center justify-between mb-4">
+//                 <h2 className="text-2xl font-semibold">Quotations</h2>
+//                 {role === "ROUTE_CONTROLLER" && (
+//                     <button onClick={() => void onCreate()} className="bg-gray-900 text-white rounded px-3 py-2">
+//                         New Quotation
+//                     </button>
+//                 )}
+//             </div>
+//             <div className="overflow-auto border rounded-xl">
+//                 <table className="min-w-[950px] w-full">
+//                     <thead className="bg-gray-50">
+//                         <tr><Th>ID</Th><Th>GR ID</Th><Th>Total</Th><Th>Created</Th><Th>Expiry</Th><Th>Status</Th><Th>ApprovedBy</Th><Th></Th></tr>
+//                     </thead>
+//                     <tbody>
+//                         {rows.map(r => (
+//                             <tr key={r.id} className="border-t">
+//                                 <Td>{r.id}</Td><Td>{r.groupRequestId}</Td><Td>{r.totalFare}</Td>
+//                                 <Td>{r.createdDate}</Td><Td>{r.expiryDate}</Td><Td>{r.status}</Td><Td>{r.approvedBy ?? "-"}</Td>
+//                                 <Td className="space-x-3">
+//                                     {r.id && (
+//                                         <>
+//                                             {role === "GROUP_DESK" && (
+//                                                 <>
+//                                                     <button onClick={() => void onSendToAgent(r.id!)} className="text-indigo-700 text-sm">Send to Agent</button>
+//                                                     <button onClick={() => void onAccept(r.id!)} className="text-green-700 text-sm">Accept</button>
+//                                                 </>
+//                                             )}
+//                                             {role === "ROUTE_CONTROLLER" && (
+//                                                 <>
+//                                                     <button onClick={() => void onStatus(r.id!)} className="text-blue-700 text-sm">Update status</button>
+//                                                     <button onClick={() => void onResend(r.id!)} className="text-purple-700 text-sm">Resend</button>
+//                                                 </>
+//                                             )}
+//                                         </>
+//                                     )}
+//                                 </Td>
+//                             </tr>
+//                         ))}
+//                     </tbody>
+//                 </table>
+//             </div>
+//         </div>
+//     );
+// }
+// function Th({ children, className = "", ...rest }:
+//     ThHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
+//     return <th className={`text-left text-xs font-semibold text-gray-600 px-3 py-2 ${className}`} {...rest}>{children}</th>;
+// }
+// function Td({ children, className = "", ...rest }:
+//     TdHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
+//     return <td className={`px-3 py-2 text-sm ${className}`} {...rest}>{children}</td>;
+// }
+
+
+
+// //style
+
+// @tailwind base;
+// @tailwind components;
+// @tailwind utilities;
+
+// /* tokens + components (you can keep exactly this or your own) */
+// @layer base {
+//   :root {
+//     --bg: 0 0% 100%;
+//     --card: 0 0% 100%;
+//     --border: 220 13% 91%;
+//     --text: 222 47% 11%;
+//     --muted: 210 40% 96%;
+//     --muted-foreground: 215 16% 47%;
+//     --primary: 221 83% 53%;
+//     --primary-foreground: 0 0% 100%;
+//     --success: 146 72% 33%;
+//     --warning: 38 92% 50%;
+//     --danger: 0 84% 60%;
+//     --info: 200 94% 40%;
+//   }
+//   .theme-dark {
+//     --bg: 222 47% 11%;
+//     --card: 221 39% 13%;
+//     --border: 215 28% 17%;
+//     --text: 210 40% 98%;
+//     --muted: 217 33% 17%;
+//     --muted-foreground: 215 20% 75%;
+//     --primary: 199 89% 48%;
+//     --primary-foreground: 210 40% 98%;
+//     --success: 146 70% 40%;
+//     --warning: 38 100% 55%;
+//     --danger: 0 84% 66%;
+//     --info: 200 94% 60%;
+//   }
+//   body { @apply bg-bg text-text antialiased; }
+// }
+// @layer components {
+//   .card { @apply bg-card border border-border rounded-2xl shadow; }
+//   .panel { @apply card p-4; }
+//   .input { @apply w-full bg-card text-text border border-border rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-primary/35; }
+//   .select { @apply input; }
+//   .textarea { @apply input min-h-[120px]; }
+//   .btn { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 font-medium bg-primary text-primary-foreground hover:brightness-95 active:brightness-90; }
+//   .btn-ghost { @apply inline-flex items-center rounded-xl px-4 py-2 border border-border hover:bg-muted; }
+//   .btn-success { @apply btn bg-success; }
+//   .btn-danger { @apply btn bg-danger; }
+//   .thead { @apply bg-muted text-muted-foreground text-xs font-semibold; }
+//   .th { @apply text-left px-3 py-2; }
+//   .td { @apply px-3 py-2 text-sm; }
+//   .tr { @apply border-t border-border; }
+// }
+
+
+
+// @tailwind utilities;
+
+// /* Inputs */
+// .input {
+//   @apply w-full px-4 py-3 border border-gray-300 rounded-xl
+//          focus:ring-2 focus:ring-blue-500 focus:border-transparent
+//          transition-colors duration-200 bg-white;
+// }
+// .input-select {
+//   @apply w-full px-4 py-3 border border-gray-300 rounded-xl bg-white
+//          focus:ring-2 focus:ring-blue-500 focus:border-transparent
+//          transition-colors duration-200;
+// }
+// .input-number {
+//   @apply w-full px-4 py-3 border border-gray-300 rounded-xl
+//          focus:ring-2 focus:ring-blue-500 focus:border-transparent
+//          transition-colors duration-200 bg-white;
+// }
+// .textarea {
+//   @apply w-full px-4 py-3 border border-gray-300 rounded-xl resize-none
+//          focus:ring-2 focus:ring-blue-500 focus:border-transparent
+//          transition-colors duration-200 bg-white;
+// }
+
+// /* Buttons */
+// .btn-primary {
+//   @apply inline-flex items-center justify-center
+//          bg-gradient-to-r from-blue-600 to-indigo-700 text-white
+//          px-6 py-3 rounded-xl font-medium
+//          hover:from-blue-700 hover:to-indigo-800
+//          transition-all duration-200 transform hover:scale-105
+//          focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+// }
+// .btn-secondary {
+//   @apply inline-flex items-center justify-center
+//          bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-medium
+//          hover:bg-gray-200 transition-colors duration-200
+//          focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+// }
+// .btn-tab {
+//   @apply flex-1 flex items-center justify-center gap-2
+//          px-4 py-3 border border-gray-300 rounded-xl
+//          text-sm font-medium transition-all duration-200
+//          hover:border-blue-300 hover:text-blue-700 bg-white;
+// }
+// .btn-tab-active {
+//   @apply border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-500/20;
+// }
+
+// /* Misc */
+// .field-label {
+//   @apply text-sm font-medium text-gray-700 mb-2;
+// }
+
+
+// // router.tsx
+
+// import { createBrowserRouter } from "react-router-dom";
+// import App from "./App";
+// import Dashboard from "@/pages/Dashboard";
+// import GroupRequests from "@/pages/GroupRequests";
+// import GroupRequestDetails from "@/pages/GroupRequestDetails";
+// import Payments from "@/pages/Payments";
+// import Quotations from "@/pages/Quotations";
+// import ProtectedRoute from "@/auth/ProtectedRoute";
+// import PublicGroupBookingForm from "@/pages/PublicGroupBookingForm";
+// import Login from "./pages/login";
+
+// export const router = createBrowserRouter([
+//   { path: "/login", element: <Login /> },
+//   { path: "/request", element: <PublicGroupBookingForm /> },    // ← public form (no auth)
+//   {
+//     path: "/",
+//     element: (
+//       <ProtectedRoute>
+//         <App />
+//       </ProtectedRoute>
+//     ),
+//     children: [
+//       { index: true, element: <Dashboard /> },
+//       { path: "group-requests", element: <GroupRequests /> },
+//       { path: "group-requests/:id", element: <GroupRequestDetails /> },
+//       { path: "quotations", element: <Quotations /> },
+//       { path: "payments", element: <Payments /> }
+//     ],
+//   },
+// ]);
+
+// .env
+// VITE_API_BASE_URL=http://localhost:8080
+
+
+

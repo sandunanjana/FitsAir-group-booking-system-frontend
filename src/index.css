@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== Tokens (Light & Dark) ===== */
+@layer base {
+  :root {
+    /* Neutral surface */
+    --bg: 0 0% 100%;
+    --card: 0 0% 100%;
+    --border: 220 13% 91%;
+    --text: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Brand (accessible blues) */
+    --primary: 221 83% 53%; /* ~#2563eb */
+    --primary-foreground: 0 0% 100%;
+
+    /* Status colors */
+    --success: 146 72% 33%; /* ~#16a34a */
+    --warning: 38 92% 50%; /* ~#f59e0b */
+    --danger: 0 84% 60%; /* ~#ef4444 */
+  }
+
+  /* DARK THEME */
+  .theme-dark {
+    --bg: 222 47% 11%;
+    --card: 221 39% 13%;
+    --border: 215 28% 17%;
+    --text: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 75%;
+
+    --primary: 199 89% 48%; /* tealish blue for dark bg */
+    --primary-foreground: 210 40% 98%;
+
+    --success: 146 70% 40%;
+    --warning: 38 100% 55%;
+    --danger: 0 84% 66%;
+  }
+
+  body {
+    @apply bg-bg text-text antialiased;
+  }
+}
+
+/* ===== Reusable UI primitives ===== */
+@layer components {
+  .card {
+    @apply bg-card border border-border rounded-2xl shadow-soft;
+  }
+  .input {
+    @apply w-full bg-card text-text border border-border rounded-xl px-3 py-2
+           outline-none focus:ring-2 focus:ring-primary/35;
+  }
+  .select {
+    @apply input;
+  }
+  .textarea {
+    @apply input;
+    @apply min-h-[120px];
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-xl px-4 py-2 font-medium
+           bg-primary text-primary-foreground shadow-soft transition
+           hover:brightness-95 active:brightness-90 disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center rounded-xl px-4 py-2 border border-border bg-transparent hover:bg-muted;
+  }
+  .btn-danger {
+    @apply btn bg-danger;
+  }
+  .btn-warning {
+    @apply btn bg-warning text-black;
+  }
+  .btn-success {
+    @apply btn bg-success;
+  }
+
+  .table {
+    @apply w-full;
+  }
+  .thead {
+    @apply bg-muted text-muted-foreground text-xs font-semibold;
+  }
+  .th {
+    @apply text-left px-3 py-2;
+  }
+  .td {
+    @apply px-3 py-2 text-sm;
+  }
+}
