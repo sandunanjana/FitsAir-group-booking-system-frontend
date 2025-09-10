@@ -1,4 +1,3 @@
-// pages/GroupRequestDetails.tsx
 import { useEffect, useState, type ReactNode, type ThHTMLAttributes, type TdHTMLAttributes } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -25,10 +24,10 @@ export default function GroupRequestDetails(): JSX.Element {
     async function load(): Promise<void> {
         if (!id) return;
         setLoading(true);
+        setError(null);
         try {
             const { data } = await getGroupRequestDetails(Number(id));
             setData(data);
-            setError(null);
         } catch (err) {
             setError("Failed to load group request details");
             console.error("Error loading group request:", err);
@@ -44,8 +43,12 @@ export default function GroupRequestDetails(): JSX.Element {
             const { data: rcs } = await listUsersByRole("ROUTE_CONTROLLER");
             const usernames: string[] = rcs.map((u: any) => u.username);
 
-            // Create a modal-like selection instead of prompt
-            const rc = window.prompt(`Assign to which Route Controller?\n\nAvailable: ${usernames.join(", ")}`);
+            if (usernames.length === 0) {
+                alert("No Route Controllers available. Please contact an administrator.");
+                return;
+            }
+
+            const rc = window.prompt(`Assign to which Route Controller?\n\nAvailable: ${usernames.join(", ")}\n\nType the username exactly:`);
             if (!rc) return;
 
             if (!usernames.includes(rc)) {
@@ -283,95 +286,99 @@ export default function GroupRequestDetails(): JSX.Element {
                 </Card>
 
                 <Card title="Payments">
-                    <div className="overflow-auto border border-gray-200 rounded-lg">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <Th>ID</Th>
-                                    <Th>Amount</Th>
-                                    <Th>Due</Th>
-                                    <Th>Status</Th>
-                                    <Th>Reference</Th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {data.payments.map(p => (
-                                    <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                                        <Td>{p.id}</Td>
-                                        <Td className="font-medium">{p.amount}</Td>
-                                        <Td>{p.dueDate}</Td>
-                                        <Td>
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                {p.status}
-                                            </span>
-                                        </Td>
-                                        <Td>{p.reference ?? "-"}</Td>
-                                    </tr>
-                                ))}
-                                {data.payments.length === 0 && (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                        <div className="overflow-auto max-h-64">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
                                     <tr>
-                                        <Td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
-                                            No payments recorded yet
-                                        </Td>
+                                        <Th>ID</Th>
+                                        <Th>Amount</Th>
+                                        <Th>Due</Th>
+                                        <Th>Status</Th>
+                                        <Th>Reference</Th>
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {data.payments.map(p => (
+                                        <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                                            <Td>{p.id}</Td>
+                                            <Td className="font-medium">{p.amount}</Td>
+                                            <Td>{p.dueDate}</Td>
+                                            <Td>
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                    {p.status}
+                                                </span>
+                                            </Td>
+                                            <Td>{p.reference ?? "-"}</Td>
+                                        </tr>
+                                    ))}
+                                    {data.payments.length === 0 && (
+                                        <tr>
+                                            <Td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                                                No payments recorded yet
+                                            </Td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </Card>
             </section>
 
             <section>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Itinerary Segments</h3>
-                <div className="overflow-auto border border-gray-200 rounded-lg">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <Th>#</Th>
-                                <Th>From</Th>
-                                <Th>To</Th>
-                                <Th>Departure</Th>
-                                <Th>Extras</Th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {data.segments.map((s, i) => (
-                                <tr key={i} className="hover:bg-gray-50 transition-colors">
-                                    <Td>{i + 1}</Td>
-                                    <Td className="font-medium">{s.from}</Td>
-                                    <Td className="font-medium">{s.to}</Td>
-                                    <Td>{s.date}</Td>
-                                    <Td className="text-xs max-w-xs">
-                                        <div className="space-y-1">
-                                            {s.extras?.extraBaggageKg && (
-                                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">
-                                                    Baggage: {s.extras.extraBaggageKg}kg
-                                                </div>
-                                            )}
-                                            {s.extras?.meal && (
-                                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mr-1">
-                                                    Meal: {s.extras.meal}
-                                                </div>
-                                            )}
-                                            {s.extras?.notes && (
-                                                <div className="mt-1 text-gray-600">
-                                                    Notes: {s.extras.notes}
-                                                </div>
-                                            )}
-                                            {!s.extras?.extraBaggageKg && !s.extras?.meal && !s.extras?.notes && "-"}
-                                        </div>
-                                    </Td>
-                                </tr>
-                            ))}
-                            {data.segments.length === 0 && (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="overflow-auto max-h-64">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
                                 <tr>
-                                    <Td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
-                                        No itinerary segments added
-                                    </Td>
+                                    <Th>#</Th>
+                                    <Th>From</Th>
+                                    <Th>To</Th>
+                                    <Th>Departure</Th>
+                                    <Th>Extras</Th>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {data.segments.map((s, i) => (
+                                    <tr key={i} className="hover:bg-gray-50 transition-colors">
+                                        <Td>{i + 1}</Td>
+                                        <Td className="font-medium">{s.from}</Td>
+                                        <Td className="font-medium">{s.to}</Td>
+                                        <Td>{s.date}</Td>
+                                        <Td className="text-xs max-w-xs">
+                                            <div className="space-y-1">
+                                                {s.extras?.extraBaggageKg && (
+                                                    <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">
+                                                        Baggage: {s.extras.extraBaggageKg}kg
+                                                    </div>
+                                                )}
+                                                {s.extras?.meal && (
+                                                    <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mr-1">
+                                                        Meal: {s.extras.meal}
+                                                    </div>
+                                                )}
+                                                {s.extras?.notes && (
+                                                    <div className="mt-1 text-gray-600">
+                                                        Notes: {s.extras.notes}
+                                                    </div>
+                                                )}
+                                                {!s.extras?.extraBaggageKg && !s.extras?.meal && !s.extras?.notes && "-"}
+                                            </div>
+                                        </Td>
+                                    </tr>
+                                ))}
+                                {data.segments.length === 0 && (
+                                    <tr>
+                                        <Td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                                            No itinerary segments added
+                                        </Td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -380,83 +387,84 @@ export default function GroupRequestDetails(): JSX.Element {
                     <h3 className="text-lg font-semibold text-gray-900">Quotations</h3>
                     <span className="text-sm text-gray-500">{data.quotations.length} quotation(s)</span>
                 </div>
-                <div className="overflow-auto border border-gray-200 rounded-lg">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <Th>ID</Th>
-                                <Th>Total Fare</Th>
-                                <Th>Created</Th>
-                                <Th>Expiry</Th>
-                                <Th>Status</Th>
-                                <Th>Approved By</Th>
-                                <Th>Actions</Th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {data.quotations.map(q => {
-                                const isExpired = new Date(q.expiryDate) < new Date();
-                                const quotationStatus = isExpired && q.status !== "ACCEPTED" ? "EXPIRED" : q.status;
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="overflow-auto max-h-96">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <Th>ID</Th>
+                                    <Th>Total Fare</Th>
+                                    <Th>Created</Th>
+                                    <Th>Expiry</Th>
+                                    <Th>Status</Th>
+                                    <Th>Approved By</Th>
+                                    <Th>Actions</Th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {data.quotations.map(q => {
+                                    const isExpired = new Date(q.expiryDate) < new Date();
+                                    const quotationStatus = isExpired && q.status !== "ACCEPTED" && q.status !== "REJECTED" ? "EXPIRED" : q.status;
 
-                                const statusColorMap: Record<string, string> = {
-                                    DRAFT: "bg-gray-100 text-gray-800",
-                                    SENT: "bg-blue-100 text-blue-800",
-                                    ACCEPTED: "bg-green-100 text-green-800",
-                                    REJECTED: "bg-red-100 text-red-800",
-                                    EXPIRED: "bg-yellow-100 text-yellow-800",
-                                };
+                                    const statusColorMap: Record<string, string> = {
+                                        DRAFT: "bg-gray-100 text-gray-800",
+                                        SENT: "bg-blue-100 text-blue-800",
+                                        ACCEPTED: "bg-green-100 text-green-800",
+                                        REJECTED: "bg-red-100 text-red-800",
+                                        EXPIRED: "bg-yellow-100 text-yellow-800",
+                                    };
 
-                                const statusColor =
-                                    statusColorMap[quotationStatus as keyof typeof statusColorMap] ??
-                                    "bg-gray-100 text-gray-800";
+                                    const statusColor =
+                                        statusColorMap[quotationStatus as keyof typeof statusColorMap] ??
+                                        "bg-gray-100 text-gray-800";
 
-
-                                return (
-                                    <tr key={q.id} className="hover:bg-gray-50 transition-colors">
-                                        <Td className="font-medium">#{q.id}</Td>
-                                        <Td className="font-bold">{q.totalFare}</Td>
-                                        <Td>{q.createdDate}</Td>
-                                        <Td className={isExpired ? "text-red-600 font-medium" : ""}>{q.expiryDate}</Td>
-                                        <Td>
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
-                                                {quotationStatus}
-                                            </span>
-                                        </Td>
-                                        <Td>{q.approvedBy ?? "-"}</Td>
-                                        <Td>
-                                            {role === "GROUP_DESK" && q.id && (
-                                                <div className="flex space-x-2">
-                                                    <button
-                                                        className="text-indigo-600 hover:text-indigo-900 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        onClick={() => void onSendToAgent(q.id!)}
-                                                        disabled={quotationStatus !== "DRAFT"}
-                                                        title={quotationStatus !== "DRAFT" ? "Only draft quotations can be sent" : "Send to agent"}
-                                                    >
-                                                        Send to Agent
-                                                    </button>
-                                                    <button
-                                                        className="text-green-600 hover:text-green-900 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        onClick={() => void onAccept(q.id!)}
-                                                        disabled={quotationStatus !== "SENT"}
-                                                        title={quotationStatus !== "SENT" ? "Only sent quotations can be accepted" : "Accept quotation"}
-                                                    >
-                                                        Accept
-                                                    </button>
-                                                </div>
-                                            )}
+                                    return (
+                                        <tr key={q.id} className="hover:bg-gray-50 transition-colors">
+                                            <Td className="font-medium">#{q.id}</Td>
+                                            <Td className="font-bold">{q.totalFare}</Td>
+                                            <Td>{q.createdDate}</Td>
+                                            <Td className={isExpired ? "text-red-600 font-medium" : ""}>{q.expiryDate}</Td>
+                                            <Td>
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                                                    {quotationStatus}
+                                                </span>
+                                            </Td>
+                                            <Td>{q.approvedBy ?? "-"}</Td>
+                                            <Td>
+                                                {role === "GROUP_DESK" && q.id && (
+                                                    <div className="flex space-x-2">
+                                                        <button
+                                                            className="text-indigo-600 hover:text-indigo-900 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            onClick={() => void onSendToAgent(q.id!)}
+                                                            disabled={quotationStatus !== "DRAFT"}
+                                                            title={quotationStatus !== "DRAFT" ? "Only draft quotations can be sent" : "Send to agent"}
+                                                        >
+                                                            Send to Agent
+                                                        </button>
+                                                        <button
+                                                            className="text-green-600 hover:text-green-900 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            onClick={() => void onAccept(q.id!)}
+                                                            disabled={quotationStatus !== "SENT"}
+                                                            title={quotationStatus !== "SENT" ? "Only sent quotations can be accepted" : "Accept quotation"}
+                                                        >
+                                                            Accept
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </Td>
+                                        </tr>
+                                    );
+                                })}
+                                {data.quotations.length === 0 && (
+                                    <tr>
+                                        <Td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                                            No quotations created yet
                                         </Td>
                                     </tr>
-                                );
-                            })}
-                            {data.quotations.length === 0 && (
-                                <tr>
-                                    <Td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                                        No quotations created yet
-                                    </Td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
         </div>
@@ -484,7 +492,7 @@ function Row({ k, v }: { k: string; v: string }): JSX.Element {
 function Th({ children, className = "", ...rest }: ThHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
     return (
         <th
-            className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${className}`}
+            className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10 ${className}`}
             {...rest}
         >
             {children}
