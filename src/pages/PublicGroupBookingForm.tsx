@@ -10,7 +10,7 @@ import {
     type Salutation,
     type Segment,
 } from "@/api/endpoints";
-import "@/styles/public-form.css"; // <-- add this import
+import "@/styles/public-form.css";
 import PosSelect from "@/components/PosSelect";
 import { normalizePos } from "@/data/pos";
 
@@ -77,7 +77,6 @@ export default function PublicGroupBookingForm(): JSX.Element {
                     { from: HUB, to: F, date: "", extras: {} }
                 );
         }
-        // keep any dates/extras already typed
         return plan.map((s, i) => ({ ...s, date: old[i]?.date ?? "", extras: old[i]?.extras ?? {} }));
     }
 
@@ -114,7 +113,7 @@ export default function PublicGroupBookingForm(): JSX.Element {
             departureDate,
             returnDate,
             currency: form.currency.toUpperCase(),
-            posCode: normalizePos(form.posCode), // <-- normalize here
+            posCode: normalizePos(form.posCode),
             segments,
         };
 
@@ -124,6 +123,20 @@ export default function PublicGroupBookingForm(): JSX.Element {
         } catch {
             setErr("Sorry, we couldn't submit your request. Please try again.");
         }
+    }
+
+    function handleNext(e: React.MouseEvent<HTMLButtonElement>) {
+        e.preventDefault();
+        e.stopPropagation();
+        const i = sections.findIndex((s) => s.id === activeSection);
+        setActiveSection(sections[i + 1]?.id ?? "other");
+    }
+
+    function handlePrev(e: React.MouseEvent<HTMLButtonElement>) {
+        e.preventDefault();
+        e.stopPropagation();
+        const i = sections.findIndex((s) => s.id === activeSection);
+        setActiveSection(sections[i - 1]?.id ?? "contact");
     }
 
     if (submitted) return <Success />;
@@ -163,8 +176,8 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                 type="button"
                                 onClick={() => setActiveSection(section.id)}
                                 className={`flex-1 min-w-[120px] px-4 py-3 text-sm font-medium transition-colors ${activeSection === section.id
-                                    ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                                    : "text-gray-500 hover:text-gray-700"
+                                        ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                                        : "text-gray-500 hover:text-gray-700"
                                     }`}
                             >
                                 <div className="flex items-center gap-2 justify-center">
@@ -181,13 +194,26 @@ export default function PublicGroupBookingForm(): JSX.Element {
                     </div>
                 </div>
 
-                <form onSubmit={onSubmit} className="p-6 md:p-8 space-y-8">
+                <form
+                    onSubmit={onSubmit}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" && activeSection !== "other") {
+                            e.preventDefault(); // block submit on earlier steps
+                        }
+                    }}
+                    className="p-6 md:p-8 space-y-8"
+                >
                     {/* Contact */}
                     {activeSection === "contact" && (
                         <Section title="Contact Information" description="Tell us how we can reach you">
                             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                <Field label="Title" required>
-                                    <select className="input-select" value={form.salutation} onChange={(e) => setF("salutation", e.target.value as Salutation)}>
+                                <Field label="Title" required htmlFor="salutation">
+                                    <select
+                                        id="salutation"
+                                        className="input-select"
+                                        value={form.salutation}
+                                        onChange={(e) => setF("salutation", e.target.value as Salutation)}
+                                    >
                                         {salutations.map((x) => (
                                             <option key={x} value={x}>
                                                 {x}
@@ -195,20 +221,55 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                         ))}
                                     </select>
                                 </Field>
-                                <Field label="First name" required>
-                                    <input className="input" value={form.firstName} onChange={(e) => setF("firstName", e.target.value)} placeholder="Enter your first name" />
+
+                                <Field label="First name" required htmlFor="firstName">
+                                    <input
+                                        id="firstName"
+                                        className="input"
+                                        value={form.firstName}
+                                        onChange={(e) => setF("firstName", e.target.value)}
+                                        placeholder="Enter your first name"
+                                    />
                                 </Field>
-                                <Field label="Last name" required>
-                                    <input className="input" value={form.lastName} onChange={(e) => setF("lastName", e.target.value)} placeholder="Enter your last name" />
+
+                                <Field label="Last name" required htmlFor="lastName">
+                                    <input
+                                        id="lastName"
+                                        className="input"
+                                        value={form.lastName}
+                                        onChange={(e) => setF("lastName", e.target.value)}
+                                        placeholder="Enter your last name"
+                                    />
                                 </Field>
-                                <Field label="Email" required>
-                                    <input className="input" type="email" value={form.email} onChange={(e) => setF("email", e.target.value)} placeholder="your.email@example.com" />
+
+                                <Field label="Email" required htmlFor="email">
+                                    <input
+                                        id="email"
+                                        className="input"
+                                        type="email"
+                                        value={form.email}
+                                        onChange={(e) => setF("email", e.target.value)}
+                                        placeholder="your.email@example.com"
+                                    />
                                 </Field>
-                                <Field label="Contact number" required>
-                                    <input className="input" value={form.contactNumber} onChange={(e) => setF("contactNumber", e.target.value)} placeholder="+94 77 123 4567" />
+
+                                <Field label="Contact number" required htmlFor="contactNumber">
+                                    <input
+                                        id="contactNumber"
+                                        className="input"
+                                        value={form.contactNumber}
+                                        onChange={(e) => setF("contactNumber", e.target.value)}
+                                        placeholder="+94 77 123 4567"
+                                    />
                                 </Field>
-                                <Field label="Category">
-                                    <select className="input-select" value={form.category} onChange={(e) => setF("category", e.target.value as RequestCategory)}>
+
+                                <Field label="Category" htmlFor="category">
+                                    <select
+                                        id="category"
+                                        className="input-select"
+                                        value={form.category}
+                                        onChange={(e) => setF("category", e.target.value as RequestCategory)}
+                                    >
                                         {categories.map((x) => (
                                             <option key={x} value={x}>
                                                 {x.replace("_", " ")}
@@ -216,38 +277,61 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                         ))}
                                     </select>
                                 </Field>
+
                                 {(form.category === "GSA" || form.category === "CUSTOMER_CARE") && (
-                                    <Field label="Partner / Customer Care ID" required>
-                                        <input className="input" value={form.partnerId ?? ""} onChange={(e) => setF("partnerId", e.target.value)} placeholder="Enter your partner ID" />
+                                    <Field label="Partner / Customer Care ID" required htmlFor="partnerId">
+                                        <input
+                                            id="partnerId"
+                                            className="input"
+                                            value={form.partnerId ?? ""}
+                                            onChange={(e) => setF("partnerId", e.target.value)}
+                                            placeholder="Enter your partner ID"
+                                        />
                                     </Field>
                                 )}
-                                <Field label="POS Country" required>
+
+                                <Field label="POS Country" required htmlFor="posCode">
                                     <PosSelect
                                         value={form.posCode}
                                         onChange={(v) => setF("posCode", v)}
-                                        category={form.category}   // <-- tells the dropdown when to lock
+                                        category={form.category}
                                     />
                                 </Field>
                             </div>
                         </Section>
                     )}
+
                     {/* Trip */}
                     {activeSection === "trip" && (
                         <Section title="Trip Details" description="Where and when are you traveling?">
                             <div className="space-y-6">
                                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    <Field label="From Airport" required>
-                                        <AirportSelect value={form.fromAirport} onChange={(v) => setF("fromAirport", v)} placeholder="Select origin (e.g., CMB)" />
+                                    <Field label="From Airport" required htmlFor="fromAirport">
+                                        <AirportSelect
+                                            value={form.fromAirport}
+                                            onChange={(v) => setF("fromAirport", v)}
+                                            placeholder="Select origin (e.g., CMB)"
+                                        />
                                     </Field>
-                                    <Field label="To Airport" required>
-                                        <AirportSelect value={form.toAirport} onChange={(v) => setF("toAirport", v)} placeholder="Select destination (e.g., KUL)" />
+
+                                    <Field label="To Airport" required htmlFor="toAirport">
+                                        <AirportSelect
+                                            value={form.toAirport}
+                                            onChange={(v) => setF("toAirport", v)}
+                                            placeholder="Select destination (e.g., KUL)"
+                                        />
                                     </Field>
-                                    <Field label="Trip Type">
+
+                                    <Field label="Trip Type" htmlFor="routing">
                                         <div className="flex gap-2">
                                             <button
                                                 type="button"
                                                 className={`btn-tab ${form.routing === "ONE_WAY" ? "btn-tab-active" : ""}`}
-                                                onClick={() => setF("routing", "ONE_WAY")}
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setF("routing", "ONE_WAY");
+                                                }}
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
@@ -257,7 +341,11 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                             <button
                                                 type="button"
                                                 className={`btn-tab ${form.routing === "RETURN" ? "btn-tab-active" : ""}`}
-                                                onClick={() => setF("routing", "RETURN")}
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setF("routing", "RETURN");
+                                                }}
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -307,20 +395,51 @@ export default function PublicGroupBookingForm(): JSX.Element {
                         <Section title="Passengers & Group" description="Tell us about your group">
                             <div className="space-y-6">
                                 <div className="grid md:grid-cols-2 lg:grid-cols-6 gap-6">
-                                    <Field label="Adults">
-                                        <input className="input-number" type="number" min={0} value={form.paxAdult} onChange={(e) => setF("paxAdult", Number(e.target.value))} />
+                                    <Field label="Adults" htmlFor="paxAdult">
+                                        <input
+                                            id="paxAdult"
+                                            className="input-number"
+                                            type="number"
+                                            min={0}
+                                            value={form.paxAdult}
+                                            onChange={(e) => setF("paxAdult", Number(e.target.value))}
+                                        />
                                     </Field>
-                                    <Field label="Children">
-                                        <input className="input-number" type="number" min={0} value={form.paxChild} onChange={(e) => setF("paxChild", Number(e.target.value))} />
+                                    <Field label="Children" htmlFor="paxChild">
+                                        <input
+                                            id="paxChild"
+                                            className="input-number"
+                                            type="number"
+                                            min={0}
+                                            value={form.paxChild}
+                                            onChange={(e) => setF("paxChild", Number(e.target.value))}
+                                        />
                                     </Field>
-                                    <Field label="Infants">
-                                        <input className="input-number" type="number" min={0} value={form.paxInfant} onChange={(e) => setF("paxInfant", Number(e.target.value))} />
+                                    <Field label="Infants" htmlFor="paxInfant">
+                                        <input
+                                            id="paxInfant"
+                                            className="input-number"
+                                            type="number"
+                                            min={0}
+                                            value={form.paxInfant}
+                                            onChange={(e) => setF("paxInfant", Number(e.target.value))}
+                                        />
                                     </Field>
-                                    <Field label="Total">
-                                        <div className="h-12 flex items-center justify-center px-4 border border-gray-300 rounded-xl bg-gray-50 font-semibold text-lg">{totalPax()}</div>
+                                    <Field label="Total" htmlFor="totalPax">
+                                        <div
+                                            id="totalPax"
+                                            className="h-12 flex items-center justify-center px-4 border border-gray-300 rounded-xl bg-gray-50 font-semibold text-lg"
+                                        >
+                                            {totalPax()}
+                                        </div>
                                     </Field>
-                                    <Field label="Group Type">
-                                        <select className="input-select" value={form.groupType} onChange={(e) => setF("groupType", e.target.value as GroupType)}>
+                                    <Field label="Group Type" htmlFor="groupType">
+                                        <select
+                                            id="groupType"
+                                            className="input-select"
+                                            value={form.groupType}
+                                            onChange={(e) => setF("groupType", e.target.value as GroupType)}
+                                        >
                                             {groupTypes.map((x) => (
                                                 <option key={x} value={x}>
                                                     {x.replace("_", " ")}
@@ -328,11 +447,11 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                             ))}
                                         </select>
                                     </Field>
-
                                 </div>
 
-                                <Field label="Special Requests">
+                                <Field label="Special Requests" htmlFor="specialRequest">
                                     <textarea
+                                        id="specialRequest"
                                         className="textarea"
                                         rows={3}
                                         value={form.specialRequest ?? ""}
@@ -340,7 +459,6 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                         placeholder="Meal preferences, baggage requirements, accessibility needs, etc."
                                     />
                                 </Field>
-
                             </div>
                         </Section>
                     )}
@@ -349,11 +467,23 @@ export default function PublicGroupBookingForm(): JSX.Element {
                     {activeSection === "other" && (
                         <Section title="Additional Information" description="Final details for your booking">
                             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                <Field label="Currency">
-                                    <input className="input uppercase" value={form.currency} onChange={(e) => setF("currency", e.target.value)} placeholder="LKR" />
+                                <Field label="Currency" htmlFor="currency">
+                                    <input
+                                        id="currency"
+                                        className="input uppercase"
+                                        value={form.currency}
+                                        onChange={(e) => setF("currency", e.target.value)}
+                                        placeholder="LKR"
+                                    />
                                 </Field>
-                                <Field label="Flight Number (Optional)">
-                                    <input className="input" value={form.flightNumber ?? ""} onChange={(e) => setF("flightNumber", e.target.value)} placeholder="UL 123" />
+                                <Field label="Flight Number (Optional)" htmlFor="flightNumber">
+                                    <input
+                                        id="flightNumber"
+                                        className="input"
+                                        value={form.flightNumber ?? ""}
+                                        onChange={(e) => setF("flightNumber", e.target.value)}
+                                        placeholder="UL 123"
+                                    />
                                 </Field>
                             </div>
                         </Section>
@@ -385,27 +515,13 @@ export default function PublicGroupBookingForm(): JSX.Element {
 
                         <div className="flex gap-3">
                             {activeSection !== "contact" && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const i = sections.findIndex((s) => s.id === activeSection);
-                                        setActiveSection(sections[i - 1]?.id ?? "contact");
-                                    }}
-                                    className="btn-secondary"
-                                >
+                                <button type="button" onClick={handlePrev} className="btn-secondary">
                                     Previous
                                 </button>
                             )}
 
                             {activeSection !== "other" ? (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const i = sections.findIndex((s) => s.id === activeSection);
-                                        setActiveSection(sections[i + 1]?.id ?? "other");
-                                    }}
-                                    className="btn-primary"
-                                >
+                                <button type="button" onClick={handleNext} className="btn-primary">
                                     Next
                                 </button>
                             ) : (
@@ -434,15 +550,28 @@ function Section({ title, description, children }: { title: string; description?
     );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+// Safer Field: no wrapper <label> around everything. Uses htmlFor + input ids.
+function Field({
+    label,
+    required,
+    children,
+    htmlFor,
+}: {
+    label: string;
+    required?: boolean;
+    children: React.ReactNode;
+    htmlFor?: string;
+}) {
     return (
-        <label className="block">
+        <div className="block">
             <div className="flex items-center gap-1 mb-2">
-                <span className="text-sm font-medium text-gray-700">{label}</span>
+                <label className="text-sm font-medium text-gray-700" htmlFor={htmlFor}>
+                    {label}
+                </label>
                 {required && <span className="text-red-500">*</span>}
             </div>
             {children}
-        </label>
+        </div>
     );
 }
 
@@ -522,7 +651,8 @@ function Success(): JSX.Element {
 
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Request Submitted Successfully! 🎉</h2>
                 <p className="text-gray-600 mb-6">
-                    We've received your group booking request. Our dedicated team will contact you within 24 hours with a customized quotation.
+                    We've received your group booking request. Our dedicated team will contact you within 24 hours with a
+                    customized quotation.
                 </p>
 
                 <div className="bg-blue-50 rounded-xl p-4 mb-6">

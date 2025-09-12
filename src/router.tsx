@@ -1,3 +1,4 @@
+// src/router.tsx (or wherever you keep this)
 import { createBrowserRouter } from "react-router-dom";
 import App from "./App";
 import Dashboard from "@/pages/Dashboard";
@@ -9,7 +10,9 @@ import ProtectedRoute from "@/auth/ProtectedRoute";
 import PublicGroupBookingForm from "@/pages/PublicGroupBookingForm";
 import Login from "./pages/login";
 import AdminUsers from "./pages/AdminUsers";
-//import AdminUsers from "@/pages/AdminUsers"; // <-- NEW
+
+// ✅ NEW: import the PNR page
+import IssuePNR from "@/pages/IssuePNR";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -28,7 +31,25 @@ export const router = createBrowserRouter([
       { path: "quotations", element: <Quotations /> },
       { path: "payments", element: <Payments /> },
 
-      // NEW: Admin-only route
+      // ✅ NEW: PNR routes (GD + ADMIN only)
+      {
+        path: "pnr",
+        element: (
+          <ProtectedRoute roles={["GROUP_DESK", "ADMIN"]}>
+            <IssuePNR />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "pnr/:id",
+        element: (
+          <ProtectedRoute roles={["GROUP_DESK", "ADMIN"]}>
+            <IssuePNR />
+          </ProtectedRoute>
+        ),
+      },
+
+      // Admin-only route (unchanged)
       {
         path: "admin/users",
         element: (

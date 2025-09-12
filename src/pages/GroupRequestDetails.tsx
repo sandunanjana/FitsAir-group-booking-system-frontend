@@ -1,4 +1,11 @@
-import { useEffect, useState, type ReactNode, type ThHTMLAttributes, type TdHTMLAttributes } from "react";
+// src/pages/GroupRequestDetails.tsx
+import {
+    useEffect,
+    useState,
+    type ReactNode,
+    type ThHTMLAttributes,
+    type TdHTMLAttributes,
+} from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
     getGroupRequestDetails,
@@ -8,8 +15,10 @@ import {
     sendQuotationToAgent,
     acceptQuotation,
     listUsersByRole,
+    updateGroupRequest,
     type GroupRequestDetails as Details,
-    type QuotationDTO
+    type QuotationDTO,
+    type GroupRequestDTO,
 } from "@/api/endpoints";
 import { useAuthStore } from "@/auth/store";
 
@@ -21,6 +30,21 @@ export default function GroupRequestDetails(): JSX.Element {
     const [error, setError] = useState<string | null>(null);
     const { role } = useAuthStore();
 
+    // ===== inline edit for Title/First/Last/Email/Phone =====
+    const [editing, setEditing] = useState(false);
+    const [form, setForm] = useState<
+        Pick<
+            GroupRequestDTO,
+            "salutation" | "firstName" | "lastName" | "contactEmail" | "contactNumber"
+        >
+    >({
+        salutation: undefined,
+        firstName: "",
+        lastName: "",
+        contactEmail: "",
+        contactNumber: "",
+    });
+
     async function load(): Promise<void> {
         if (!id) return;
         setLoading(true);
@@ -28,6 +52,13 @@ export default function GroupRequestDetails(): JSX.Element {
         try {
             const { data } = await getGroupRequestDetails(Number(id));
             setData(data);
+            setForm({
+                salutation: data.request.salutation,
+                firstName: data.request.firstName ?? "",
+                lastName: data.request.lastName ?? "",
+                contactEmail: data.request.contactEmail,
+                contactNumber: data.request.contactNumber ?? "",
+            });
         } catch (err) {
             setError("Failed to load group request details");
             console.error("Error loading group request:", err);
@@ -36,7 +67,9 @@ export default function GroupRequestDetails(): JSX.Element {
         }
     }
 
-    useEffect(() => { void load(); }, [id]);
+    useEffect(() => {
+        void load();
+    }, [id]);
 
     async function onSendToRC(): Promise<void> {
         try {
@@ -44,15 +77,25 @@ export default function GroupRequestDetails(): JSX.Element {
             const usernames: string[] = rcs.map((u: any) => u.username);
 
             if (usernames.length === 0) {
-                alert("No Route Controllers available. Please contact an administrator.");
+                alert(
+                    "No Route Controllers available. Please contact an administrator."
+                );
                 return;
             }
 
-            const rc = window.prompt(`Assign to which Route Controller?\n\nAvailable: ${usernames.join(", ")}\n\nType the username exactly:`);
+            const rc = window.prompt(
+                `Assign to which Route Controller?\n\nAvailable: ${usernames.join(
+                    ", "
+                )}\n\nType the username exactly:`
+            );
             if (!rc) return;
 
             if (!usernames.includes(rc)) {
-                alert(`"${rc}" is not a valid Route Controller. Please choose from: ${usernames.join(", ")}`);
+                alert(
+                    `"${rc}" is not a valid Route Controller. Please choose from: ${usernames.join(
+                        ", "
+                    )}`
+                );
                 return;
             }
 
@@ -81,6 +124,22 @@ export default function GroupRequestDetails(): JSX.Element {
             return;
         }
 
+        // NEW: currency + note
+        const defaultCurrency = (data?.request.currency ?? "LKR").toUpperCase();
+        const currency = (
+            window.prompt(
+                "Currency (3 letters, e.g. LKR, USD):",
+                defaultCurrency
+            ) ?? defaultCurrency
+        )
+            .trim()
+            .toUpperCase();
+        if (!/^[A-Z]{3}$/.test(currency)) {
+            alert("Currency must be a 3-letter code (e.g., LKR, USD)");
+            return;
+        }
+        const note = (window.prompt("Note (optional):", "") ?? "").trim();
+
         const now = new Date();
         const in48h = new Date(now.getTime() + 48 * 3600 * 1000);
 
@@ -91,6 +150,8 @@ export default function GroupRequestDetails(): JSX.Element {
                 createdDate: toYMD(now),
                 expiryDate: toYMD(in48h),
                 status: "DRAFT",
+                currency, // NEW
+                note: note || null, // NEW
             };
             await createQuotation(dto);
             await load();
@@ -126,7 +187,12 @@ export default function GroupRequestDetails(): JSX.Element {
     }
 
     async function onDelete(): Promise<void> {
-        if (!confirm("Are you sure you want to delete this request? This action cannot be undone.")) return;
+        if (
+            !confirm(
+                "Are you sure you want to delete this request? This action cannot be undone."
+            )
+        )
+            return;
 
         try {
             await deleteGroupRequest(Number(id));
@@ -138,28 +204,61 @@ export default function GroupRequestDetails(): JSX.Element {
         }
     }
 
+    async function onSaveEdits(): Promise<void> {
+        if (!data?.request?.id) return;
+
+        // Basic validation
+        if (!form.contactEmail || !/.+@.+\..+/.test(form.contactEmail)) {
+            alert("Please enter a valid email address");
+            return;
+        }
+
+        const payload: GroupRequestDTO = {
+            ...data.request,
+            salutation: form.salutation,
+            firstName: form.firstName,
+            lastName: form.lastName,
+            contactEmail: form.contactEmail,
+            contactNumber: form.contactNumber,
+        };
+
+        try {
+            await updateGroupRequest(data.request.id, payload);
+            setEditing(false);
+            await load();
+            alert("Contact details updated");
+        } catch (err: any) {
+            const msg =
+                err?.response?.data?.error ||
+                err?.response?.data?.message ||
+                err?.message ||
+                "Failed to update details";
+            alert(msg);
+        }
+    }
+
     if (loading) {
         return (
             <div className="p-6 space-y-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <div className="h-8 bg-gray-200 rounded w-64 mb-2 animate-pulse"></div>
-                        <div className="h-4 bg-gray-200 rounded w-96 animate-pulse"></div>
+                        <div className="h-8 bg-gray-200 rounded w-64 mb-2 animate-pulse" />
+                        <div className="h-4 bg-gray-200 rounded w-96 animate-pulse" />
                     </div>
                     <div className="space-x-2">
-                        <div className="h-10 bg-gray-200 rounded w-24 inline-block animate-pulse"></div>
-                        <div className="h-10 bg-gray-200 rounded w-32 inline-block animate-pulse"></div>
+                        <div className="h-10 bg-gray-200 rounded w-24 inline-block animate-pulse" />
+                        <div className="h-10 bg-gray-200 rounded w-32 inline-block animate-pulse" />
                     </div>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-6">
                     {[...Array(2)].map((_, i) => (
                         <div key={i} className="border rounded-xl p-4">
-                            <div className="h-6 bg-gray-200 rounded w-32 mb-4 animate-pulse"></div>
+                            <div className="h-6 bg-gray-200 rounded w-32 mb-4 animate-pulse" />
                             {[...Array(10)].map((_, j) => (
                                 <div key={j} className="grid grid-cols-3 gap-2 py-2">
-                                    <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-                                    <div className="h-4 bg-gray-200 rounded col-span-2 animate-pulse"></div>
+                                    <div className="h-4 bg-gray-200 rounded animate-pulse" />
+                                    <div className="h-4 bg-gray-200 rounded col-span-2 animate-pulse" />
                                 </div>
                             ))}
                         </div>
@@ -168,8 +267,8 @@ export default function GroupRequestDetails(): JSX.Element {
 
                 {[...Array(2)].map((_, i) => (
                     <div key={i} className="border rounded-xl p-4">
-                        <div className="h-6 bg-gray-200 rounded w-48 mb-4 animate-pulse"></div>
-                        <div className="h-64 bg-gray-100 rounded animate-pulse"></div>
+                        <div className="h-6 bg-gray-200 rounded w-48 mb-4 animate-pulse" />
+                        <div className="h-64 bg-gray-100 rounded animate-pulse" />
                     </div>
                 ))}
             </div>
@@ -182,12 +281,22 @@ export default function GroupRequestDetails(): JSX.Element {
                 <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
                     <div className="flex">
                         <div className="flex-shrink-0">
-                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            <svg
+                                className="h-5 w-5 text-red-400"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                            >
+                                <path
+                                    fillRule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                    clipRule="evenodd"
+                                />
                             </svg>
                         </div>
                         <div className="ml-3">
-                            <p className="text-sm text-red-700">{error || "Failed to load group request details"}</p>
+                            <p className="text-sm text-red-700">
+                                {error || "Failed to load group request details"}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -209,20 +318,30 @@ export default function GroupRequestDetails(): JSX.Element {
         ACCEPTED: "bg-green-100 text-green-800",
         REJECTED: "bg-red-100 text-red-800",
         COMPLETED: "bg-gray-100 text-gray-800",
-    };
+        TICKETED: "bg-green-100 text-green-800",
+        CANCELLED: "bg-gray-100 text-gray-800",
+    } as const;
 
     return (
         <div className="p-6 space-y-6">
             <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-gray-200">
                 <div>
                     <div className="flex items-center gap-3 mb-2">
-                        <h2 className="text-2xl font-bold text-gray-900">Group Request #{r.id}</h2>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[r.status as keyof typeof statusColors] || "bg-gray-100 text-gray-800"}`}>
+                        <h2 className="text-2xl font-bold text-gray-900">
+                            Group Request #{r.id}
+                        </h2>
+                        <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[
+                                (r.status as keyof typeof statusColors) ?? "NEW"
+                                ] || "bg-gray-100 text-gray-800"
+                                }`}
+                        >
                             {r.status}
                         </span>
                     </div>
                     <p className="text-sm text-gray-600">
-                        <span className="font-medium">{r.agentName}</span> · {r.route} · {r.paxCount} passengers
+                        <span className="font-medium">{r.agentName}</span> · {r.route} ·{" "}
+                        {r.paxCount} passengers
                         {r.assignedRcUsername && ` · Assigned to: ${r.assignedRcUsername}`}
                     </p>
                 </div>
@@ -233,8 +352,19 @@ export default function GroupRequestDetails(): JSX.Element {
                                 className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors flex items-center"
                                 onClick={() => void onDelete()}
                             >
-                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                <svg
+                                    className="w-4 h-4 mr-1"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    />
                                 </svg>
                                 Delete
                             </button>
@@ -242,8 +372,19 @@ export default function GroupRequestDetails(): JSX.Element {
                                 className="px-4 py-2 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors flex items-center"
                                 onClick={() => void onSendToRC()}
                             >
-                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                <svg
+                                    className="w-4 h-4 mr-1"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                    />
                                 </svg>
                                 Send to RC
                             </button>
@@ -254,8 +395,19 @@ export default function GroupRequestDetails(): JSX.Element {
                             className="px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors flex items-center"
                             onClick={() => void onProvideQuotation()}
                         >
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            <svg
+                                className="w-4 h-4 mr-1"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
                             </svg>
                             Provide Quotation
                         </button>
@@ -263,28 +415,141 @@ export default function GroupRequestDetails(): JSX.Element {
                 </div>
             </header>
 
+            {/* ===== Request Details (editable) + Payments ===== */}
             <section className="grid md:grid-cols-2 gap-6">
                 <Card title="Request Details">
-                    <Row k="Title" v={r.salutation ?? "-"} />
-                    <Row k="First name" v={r.firstName ?? "-"} />
-                    <Row k="Last name" v={r.lastName ?? "-"} />
-                    <Row k="Email" v={r.contactEmail} />
-                    <Row k="Phone" v={r.contactNumber ?? "-"} />
-                    <Row k="From" v={r.fromAirport ?? "-"} />
-                    <Row k="To" v={r.toAirport ?? "-"} />
-                    <Row k="Routing" v={r.routing ?? "-"} />
-                    <Row k="Departure" v={r.departureDate} />
-                    <Row k="Return" v={r.returnDate ?? "-"} />
-                    <Row k="Pax (A/C/I)" v={`${r.paxAdult ?? 0}/${r.paxChild ?? 0}/${r.paxInfant ?? 0}`} />
-                    <Row k="POS" v={r.posCode} />
-                    <Row k="Currency" v={r.currency ?? "-"} />
-                    <Row k="Group Type" v={r.groupType ?? "-"} />
-                    <Row k="Category" v={r.category} />
-                    <Row k="Partner ID" v={r.partnerId ?? "-"} />
-                    <Row k="Assigned RC" v={r.assignedRcUsername ?? "-"} />
-                    <Row k="Special Requests" v={r.specialRequest ?? "-"} />
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="text-sm text-gray-500">Contact</div>
+                        {(role === "GROUP_DESK" || role === "ADMIN") &&
+                            (!editing ? (
+                                <button
+                                    className="text-indigo-600 font-medium"
+                                    onClick={() => setEditing(true)}
+                                >
+                                    Edit
+                                </button>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <button
+                                        className="px-3 py-1 rounded bg-gray-100"
+                                        onClick={() => {
+                                            setEditing(false);
+                                            setForm({
+                                                salutation: r.salutation,
+                                                firstName: r.firstName ?? "",
+                                                lastName: r.lastName ?? "",
+                                                contactEmail: r.contactEmail,
+                                                contactNumber: r.contactNumber ?? "",
+                                            });
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        className="px-3 py-1 rounded bg-indigo-600 text-white"
+                                        onClick={() => void onSaveEdits()}
+                                    >
+                                        Save
+                                    </button>
+                                </div>
+                            ))}
+                    </div>
+
+                    {!editing ? (
+                        <>
+                            <Row k="Title" v={r.salutation ?? "-"} />
+                            <Row k="First name" v={r.firstName ?? "-"} />
+                            <Row k="Last name" v={r.lastName ?? "-"} />
+                            <Row k="Email" v={r.contactEmail} />
+                            <Row k="Phone" v={r.contactNumber ?? "-"} />
+                            <Row k="From" v={r.fromAirport ?? "-"} />
+                            <Row k="To" v={r.toAirport ?? "-"} />
+                            <Row k="Routing" v={r.routing ?? "-"} />
+                            <Row k="Departure" v={r.departureDate} />
+                            <Row k="Return" v={r.returnDate ?? "-"} />
+                            <Row
+                                k="Pax (A/C/I)"
+                                v={`${r.paxAdult ?? 0}/${r.paxChild ?? 0}/${r.paxInfant ?? 0}`}
+                            />
+                            <Row k="POS" v={r.posCode} />
+                            <Row k="Currency" v={r.currency ?? "-"} />
+                            <Row k="Group Type" v={r.groupType ?? "-"} />
+                            <Row k="Category" v={r.category} />
+                            <Row k="Partner ID" v={r.partnerId ?? "-"} />
+                            <Row k="Assigned RC" v={r.assignedRcUsername ?? "-"} />
+                            <Row k="Special Requests" v={r.specialRequest ?? "-"} />
+                        </>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Labeled>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Title
+                                </label>
+                                <input
+                                    className="w-full px-3 py-2 border rounded"
+                                    placeholder="MR / MRS / MS / DR..."
+                                    value={form.salutation ?? ""}
+                                    onChange={(e) =>
+                                        setForm((f) => ({
+                                            ...f,
+                                            salutation: (e.target.value || undefined) as any,
+                                        }))
+                                    }
+                                />
+                            </Labeled>
+                            <Labeled>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    First name
+                                </label>
+                                <input
+                                    className="w-full px-3 py-2 border rounded"
+                                    value={form.firstName}
+                                    onChange={(e) =>
+                                        setForm((f) => ({ ...f, firstName: e.target.value }))
+                                    }
+                                />
+                            </Labeled>
+                            <Labeled>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Last name
+                                </label>
+                                <input
+                                    className="w-full px-3 py-2 border rounded"
+                                    value={form.lastName}
+                                    onChange={(e) =>
+                                        setForm((f) => ({ ...f, lastName: e.target.value }))
+                                    }
+                                />
+                            </Labeled>
+                            <Labeled>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Email
+                                </label>
+                                <input
+                                    className="w-full px-3 py-2 border rounded"
+                                    value={form.contactEmail}
+                                    onChange={(e) =>
+                                        setForm((f) => ({ ...f, contactEmail: e.target.value }))
+                                    }
+                                />
+                            </Labeled>
+                            <Labeled>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Phone
+                                </label>
+                                <input
+                                    className="w-full px-3 py-2 border rounded"
+                                    value={form.contactNumber ?? ""}
+                                    onChange={(e) =>
+                                        setForm((f) => ({ ...f, contactNumber: e.target.value }))
+                                    }
+                                />
+                            </Labeled>
+                        </div>
+                    )}
                 </Card>
 
+                {/* ===== Payments ===== */}
                 <Card title="Payments">
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                         <div className="overflow-auto max-h-64">
@@ -299,8 +564,11 @@ export default function GroupRequestDetails(): JSX.Element {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {data.payments.map(p => (
-                                        <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                                    {data.payments.map((p) => (
+                                        <tr
+                                            key={p.id}
+                                            className="hover:bg-gray-50 transition-colors"
+                                        >
                                             <Td>{p.id}</Td>
                                             <Td className="font-medium">{p.amount}</Td>
                                             <Td>{p.dueDate}</Td>
@@ -314,7 +582,10 @@ export default function GroupRequestDetails(): JSX.Element {
                                     ))}
                                     {data.payments.length === 0 && (
                                         <tr>
-                                            <Td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                                            <Td
+                                                colSpan={5}
+                                                className="px-6 py-4 text-center text-sm text-gray-500"
+                                            >
                                                 No payments recorded yet
                                             </Td>
                                         </tr>
@@ -326,8 +597,11 @@ export default function GroupRequestDetails(): JSX.Element {
                 </Card>
             </section>
 
+            {/* ===== Itinerary Segments (kept intact) ===== */}
             <section>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Itinerary Segments</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Itinerary Segments
+                </h3>
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="overflow-auto max-h-64">
                         <table className="min-w-full divide-y divide-gray-200">
@@ -364,14 +638,20 @@ export default function GroupRequestDetails(): JSX.Element {
                                                         Notes: {s.extras.notes}
                                                     </div>
                                                 )}
-                                                {!s.extras?.extraBaggageKg && !s.extras?.meal && !s.extras?.notes && "-"}
+                                                {!s.extras?.extraBaggageKg &&
+                                                    !s.extras?.meal &&
+                                                    !s.extras?.notes &&
+                                                    "-"}
                                             </div>
                                         </Td>
                                     </tr>
                                 ))}
                                 {data.segments.length === 0 && (
                                     <tr>
-                                        <Td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                                        <Td
+                                            colSpan={5}
+                                            className="px-6 py-4 text-center text-sm text-gray-500"
+                                        >
                                             No itinerary segments added
                                         </Td>
                                     </tr>
@@ -382,10 +662,13 @@ export default function GroupRequestDetails(): JSX.Element {
                 </div>
             </section>
 
+            {/* ===== Quotations (with Currency + Note) ===== */}
             <section>
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-900">Quotations</h3>
-                    <span className="text-sm text-gray-500">{data.quotations.length} quotation(s)</span>
+                    <span className="text-sm text-gray-500">
+                        {data.quotations.length} quotation(s)
+                    </span>
                 </div>
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="overflow-auto max-h-96">
@@ -398,13 +681,19 @@ export default function GroupRequestDetails(): JSX.Element {
                                     <Th>Expiry</Th>
                                     <Th>Status</Th>
                                     <Th>Approved By</Th>
+                                    <Th>Note</Th>
                                     <Th>Actions</Th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {data.quotations.map(q => {
+                                {data.quotations.map((q) => {
                                     const isExpired = new Date(q.expiryDate) < new Date();
-                                    const quotationStatus = isExpired && q.status !== "ACCEPTED" && q.status !== "REJECTED" ? "EXPIRED" : q.status;
+                                    const quotationStatus =
+                                        isExpired &&
+                                            q.status !== "ACCEPTED" &&
+                                            q.status !== "REJECTED"
+                                            ? "EXPIRED"
+                                            : q.status;
 
                                     const statusColorMap: Record<string, string> = {
                                         DRAFT: "bg-gray-100 text-gray-800",
@@ -415,21 +704,31 @@ export default function GroupRequestDetails(): JSX.Element {
                                     };
 
                                     const statusColor =
-                                        statusColorMap[quotationStatus as keyof typeof statusColorMap] ??
-                                        "bg-gray-100 text-gray-800";
+                                        statusColorMap[
+                                        quotationStatus as keyof typeof statusColorMap
+                                        ] ?? "bg-gray-100 text-gray-800";
 
                                     return (
                                         <tr key={q.id} className="hover:bg-gray-50 transition-colors">
                                             <Td className="font-medium">#{q.id}</Td>
-                                            <Td className="font-bold">{q.totalFare}</Td>
+                                            <Td className="font-bold">
+                                                {q.totalFare} {q.currency ? q.currency : ""}
+                                            </Td>
                                             <Td>{q.createdDate}</Td>
-                                            <Td className={isExpired ? "text-red-600 font-medium" : ""}>{q.expiryDate}</Td>
+                                            <Td className={isExpired ? "text-red-600 font-medium" : ""}>
+                                                {q.expiryDate}
+                                            </Td>
                                             <Td>
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                                                <span
+                                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}
+                                                >
                                                     {quotationStatus}
                                                 </span>
                                             </Td>
                                             <Td>{q.approvedBy ?? "-"}</Td>
+                                            <Td className="max-w-xs truncate" title={q.note ?? ""}>
+                                                {q.note ?? "-"}
+                                            </Td>
                                             <Td>
                                                 {role === "GROUP_DESK" && q.id && (
                                                     <div className="flex space-x-2">
@@ -437,7 +736,11 @@ export default function GroupRequestDetails(): JSX.Element {
                                                             className="text-indigo-600 hover:text-indigo-900 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                                             onClick={() => void onSendToAgent(q.id!)}
                                                             disabled={quotationStatus !== "DRAFT"}
-                                                            title={quotationStatus !== "DRAFT" ? "Only draft quotations can be sent" : "Send to agent"}
+                                                            title={
+                                                                quotationStatus !== "DRAFT"
+                                                                    ? "Only draft quotations can be sent"
+                                                                    : "Send to agent"
+                                                            }
                                                         >
                                                             Send to Agent
                                                         </button>
@@ -445,7 +748,11 @@ export default function GroupRequestDetails(): JSX.Element {
                                                             className="text-green-600 hover:text-green-900 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                                             onClick={() => void onAccept(q.id!)}
                                                             disabled={quotationStatus !== "SENT"}
-                                                            title={quotationStatus !== "SENT" ? "Only sent quotations can be accepted" : "Accept quotation"}
+                                                            title={
+                                                                quotationStatus !== "SENT"
+                                                                    ? "Only sent quotations can be accepted"
+                                                                    : "Accept quotation"
+                                                            }
                                                         >
                                                             Accept
                                                         </button>
@@ -457,7 +764,10 @@ export default function GroupRequestDetails(): JSX.Element {
                                 })}
                                 {data.quotations.length === 0 && (
                                     <tr>
-                                        <Td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                                        <Td
+                                            colSpan={8}
+                                            className="px-6 py-4 text-center text-sm text-gray-500"
+                                        >
                                             No quotations created yet
                                         </Td>
                                     </tr>
@@ -471,10 +781,18 @@ export default function GroupRequestDetails(): JSX.Element {
     );
 }
 
-function Card({ title, children }: { title: string; children: ReactNode }): JSX.Element {
+function Card({
+    title,
+    children,
+}: {
+    title: string;
+    children: ReactNode;
+}): JSX.Element {
     return (
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">{title}</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                {title}
+            </h3>
             {children}
         </div>
     );
@@ -483,13 +801,23 @@ function Card({ title, children }: { title: string; children: ReactNode }): JSX.
 function Row({ k, v }: { k: string; v: string }): JSX.Element {
     return (
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 py-3 border-b border-gray-100 last:border-b-0">
-            <div className="text-sm font-medium text-gray-700 sm:col-span-1">{k}</div>
+            <div className="text-sm font-medium text-gray-700 sm:col-span-1">
+                {k}
+            </div>
             <div className="text-sm text-gray-900 sm:col-span-3">{v || "-"}</div>
         </div>
     );
 }
 
-function Th({ children, className = "", ...rest }: ThHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
+function Labeled({ children }: { children: ReactNode }) {
+    return <div className="space-y-1">{children}</div>;
+}
+
+function Th({
+    children,
+    className = "",
+    ...rest
+}: ThHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
     return (
         <th
             className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10 ${className}`}
@@ -500,9 +828,16 @@ function Th({ children, className = "", ...rest }: ThHTMLAttributes<HTMLTableCel
     );
 }
 
-function Td({ children, className = "", ...rest }: TdHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
+function Td({
+    children,
+    className = "",
+    ...rest
+}: TdHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
     return (
-        <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 ${className}`} {...rest}>
+        <td
+            className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 ${className}`}
+            {...rest}
+        >
             {children}
         </td>
     );
