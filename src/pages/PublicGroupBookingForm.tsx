@@ -592,7 +592,7 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                             className="input"
                                             value={form.flightNumber ?? ""}
                                             onChange={(e) => setF("flightNumber", e.target.value)}
-                                            placeholder="UL 123"
+                                            placeholder="8D 123"
                                         />
                                     </Field>
                                 </div>
