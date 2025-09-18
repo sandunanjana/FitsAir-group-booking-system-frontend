@@ -7,15 +7,15 @@ import {
   type TdHTMLAttributes,
 } from "react";
 import {
-    createQuotation,
-    listQuotations,
-    resendQuotation,
-    resendQuotationSimple,
-    updateQuoteStatus,
-    sendQuotationToAgent,
-    acceptQuotation,
-    type QuotationDTO,
-    type QuotationStatus,
+  createQuotation,
+  listQuotations,
+  resendQuotation,
+  resendQuotationSimple,
+  updateQuoteStatus,
+  sendQuotationToAgent,
+  acceptQuotation,
+  type QuotationDTO,
+  type QuotationStatus,
 } from "@/api/endpoints";
 import { extractContent, type Page } from "@/types/page";
 import { useAuthStore } from "@/auth/store";
@@ -231,19 +231,19 @@ export default function Quotations(): JSX.Element {
     }
   }
 
-  async function onSendToAgent(id: number): Promise<void> {
-    if (role !== "GROUP_DESK") return; // RC cannot act
-    if (!confirm("Send this quotation to the agent?")) return;
-
+  async function onSendToAgent(qid: number): Promise<void> {
     try {
-      await sendQuotationToAgent(id);
+      const subj = window.prompt("Email subject:", "Your group quotation");
+      if (subj === null) return;
+      await sendQuotationToAgent(qid, subj.trim());
       await load();
       alert("Quotation sent to agent successfully");
     } catch (err) {
       alert("Failed to send quotation to agent");
-      console.error("Error sending to agent:", err);
+      console.error(err);
     }
   }
+
 
   async function onAccept(id: number): Promise<void> {
     if (role !== "GROUP_DESK") return;
@@ -578,29 +578,29 @@ export default function Quotations(): JSX.Element {
                               displayStatus === "REJECTED" ||
                               displayStatus === "DRAFT" ||
                               displayStatus === "SENT") && (
-                              <button
-                                onClick={() =>
-                                  void onResend(r.id!, r.groupRequestId)
-                                }
-                                className="text-purple-600 hover:text-purple-900 text-sm font-medium px-2 py-1 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors flex items-center"
-                                title="Resend quotation (set new fare now or resend to RC)"
-                              >
-                                <svg
-                                  className="w-3 h-3 mr-1"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
+                                <button
+                                  onClick={() =>
+                                    void onResend(r.id!, r.groupRequestId)
+                                  }
+                                  className="text-purple-600 hover:text-purple-900 text-sm font-medium px-2 py-1 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors flex items-center"
+                                  title="Resend quotation (set new fare now or resend to RC)"
                                 >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                  />
-                                </svg>
-                                Resend
-                              </button>
-                            )}
+                                  <svg
+                                    className="w-3 h-3 mr-1"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                    />
+                                  </svg>
+                                  Resend
+                                </button>
+                              )}
                           </div>
                         )}
 
