@@ -132,22 +132,27 @@ function AdminUsersInner(): JSX.Element {
   }
 
   function handleResetPassword(u: AppUser) {
-    setConfirmDialog({
-      open: true,
-      title: "Reset Password",
-      message: `Enter new password for ${u.username}:`,
-      onConfirm: () => {
-        const pw = (document.getElementById("password-input") as HTMLInputElement)?.value;
-        if (!pw || pw.length < 6) {
-          alert("Password must be at least 6 characters.");
-          return;
-        }
-        resetPassword(u.id, pw.trim());
-        setConfirmDialog({ ...confirmDialog, open: false });
+  setConfirmDialog({
+    open: true,
+    title: "Reset Password",
+    message: `Enter new password for ${u.username}:`,
+    onConfirm: async () => {
+      const pw = (document.getElementById("password-input") as HTMLInputElement)?.value;
+      if (!pw || pw.length < 6) {
+        alert("Password must be at least 6 characters.");
+        return;
+      }
+      try {
+        await resetPassword(u.id, pw.trim());
+        setConfirmDialog(prev => ({ ...prev, open: false }));
         alert("Password updated.");
-      },
-    });
-  }
+      } catch (e) {
+        console.error(e);
+        alert("Failed to update password.");
+      }
+    },
+  });
+}
 
   function handleToggleEnabled(u: AppUser) {
     setConfirmDialog({
