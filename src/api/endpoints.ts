@@ -10,7 +10,7 @@ export type BookingStatus =
   | "TICKETED"
   | "CANCELLED";
 
-export type RequestCategory = "NORMAL" | "GSA" | "CUSTOMER_CARE" | "AGENT";
+export type RequestCategory = "Direct Customer" | "GSA" | "CUSTOMER_CARE" | "AGENT";
 export type QuotationStatus = "DRAFT" | "SENT" | "EXPIRED" | "ACCEPTED" | "REJECTED" | "RESENT";
 export type PaymentStatus = "PENDING" | "PAID" | "OVERDUE";
 export type Salutation = "MR" | "MRS" | "MISS" | "MS" | "DR" | "PROF" | "OTHER";
@@ -253,3 +253,6 @@ export const sendPNRToAgent = (groupId: number, pnr: string) =>
 // src/api/endpoints.ts (append)
 export const updateSegmentDate = (groupRequestId: number, segmentIndex1Based: number, newDate: string) =>
   api.patch(`/api/group-requests/${groupRequestId}/segments/${segmentIndex1Based}/date?date=${encodeURIComponent(newDate)}`);
+
+// dummy export to make this a module
+export const dummy = null;
