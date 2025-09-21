@@ -254,5 +254,3 @@ export const sendPNRToAgent = (groupId: number, pnr: string) =>
 export const updateSegmentDate = (groupRequestId: number, segmentIndex1Based: number, newDate: string) =>
   api.patch(`/api/group-requests/${groupRequestId}/segments/${segmentIndex1Based}/date?date=${encodeURIComponent(newDate)}`);
 
-
-// eghrhrhtr
