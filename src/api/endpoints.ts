@@ -100,6 +100,8 @@ export type DashboardStatsDTO = {
   confirmedGroupsWithPaymentsDueToday: number;
   quotationsForFollowUpToday: number;
 };
+export const fetchDashboard = () =>
+  api.get<DashboardStatsDTO>("/api/dashboard/stats");
 
 /* ========= Admin users (for RC picker) ========= */
 export type Role = "GROUP_DESK" | "ROUTE_CONTROLLER" | "ADMIN";
@@ -169,11 +171,8 @@ export const resendQuotation = (expiredId: number, dto: QuotationDTO) =>
 export const resendQuotationSimple = (expiredId: number) =>
   api.patch<QuotationDTO>(`/api/quotations/${expiredId}/resend-simple`);
 
-export const sendQuotationToAgent = (id: number, subject?: string) =>
-  api.patch<QuotationDTO>(
-    `/api/quotations/${id}/send-to-agent${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`
-  );
-
+export const sendQuotationToAgent = (id: number) =>
+  api.patch<QuotationDTO>(`/api/quotations/${id}/send-to-agent`);
 
 export const acceptQuotation = (id: number) =>
   api.patch<QuotationDTO>(`/api/quotations/${id}/accept`);
@@ -254,3 +253,4 @@ export const sendPNRToAgent = (groupId: number, pnr: string) =>
 // src/api/endpoints.ts (append)
 export const updateSegmentDate = (groupRequestId: number, segmentIndex1Based: number, newDate: string) =>
   api.patch(`/api/group-requests/${groupRequestId}/segments/${segmentIndex1Based}/date?date=${encodeURIComponent(newDate)}`);
+
