@@ -34,7 +34,7 @@ function Popup({
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
             <div className="w-full max-w-md rounded-2xl bg-white shadow-xl p-6">
                 <div className="flex items-start gap-3">
-                    <svg className="w-6 h-6 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-[#001B71] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
                     </svg>
                     <div className="text-gray-800">{message}</div>
@@ -136,7 +136,6 @@ export default function PublicGroupBookingForm(): JSX.Element {
 
         if (!form.firstName || !form.lastName) return setErr("Please enter your name.");
         if (!passengerRulesOk()) {
-            // Submit-time validation (popup blocks tab/Next on passengers)
             if (totalGroup() < 10) return setErr("Minimum group size is 10 (Adults + Children).");
             if (form.paxInfant > 4) return setErr("Maximum 4 infants are allowed.");
         }
@@ -146,6 +145,9 @@ export default function PublicGroupBookingForm(): JSX.Element {
         if (segments.some((s) => !s.date)) return setErr("Please set a date for each segment.");
 
         const departureDate = segments[0]?.date || "";
+        if (form.routing === "RETURN" && segments.length < 2) {
+            return setErr("Return trip requires at least two segments.");
+        }
         const returnDate = form.routing === "RETURN" ? segments.at(-1)?.date || "" : undefined;
 
         const payload: PublicGroupRequestWithSegments = {
@@ -228,17 +230,17 @@ export default function PublicGroupBookingForm(): JSX.Element {
     ] as const;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4 md:p-6">
+        <div className="min-h-screen bg-white flex items-center justify-center p-4">
             <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 md:p-8">
+                <div className="header-gradient text-white p-6 md:p-8">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
                             <h1 className="text-2xl md:text-3xl font-bold">Group Booking Request</h1>
                             <p className="text-blue-100 mt-2">Get the best rates for your group travel</p>
                         </div>
-                        <div className="bg-blue-500/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium inline-flex items-center gap-2 self-start">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="bg-white/15 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium inline-flex items-center gap-2 self-start">
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                             </svg>
                             Secure & Encrypted
@@ -259,12 +261,12 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                     aria-selected={isActive}
                                     aria-controls={`panel-${section.id}`}
                                     onClick={() => handleTabClick(section.id)}
-                                    className={`flex-1 min-w-[160px] px-4 py-3 text-sm font-medium transition-colors ${isActive ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50" : "text-gray-500 hover:text-gray-700"
+                                    className={`flex-1 min-w-[160px] px-4 py-3 text-sm font-medium transition-colors ${isActive ? "text-[#001B71] border-b-2 border-[#001B71] bg-[#001B71]/10" : "text-gray-500 hover:text-gray-700"
                                         }`}
                                 >
                                     <div className="flex items-center gap-2 justify-center">
                                         <div
-                                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${isActive ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
+                                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${isActive ? "bg-[#001B71] text-white" : "bg-gray-200 text-gray-600"
                                                 }`}
                                         >
                                             {index + 1}
@@ -391,11 +393,8 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                         <Field label="From Airport" required htmlFor="fromAirport">
                                             <AirportSelect
                                                 value={form.fromAirport}
-                                                // (Optional) if you add excludeCodes support to AirportSelect (see part B)
-                                                // excludeCodes={form.toAirport ? [form.toAirport] : []}
                                                 onChange={(v) => {
                                                     setF("fromAirport", v);
-                                                    // If origin becomes equal to current destination, clear destination.
                                                     if (v && form.toAirport && v.toUpperCase() === form.toAirport.toUpperCase()) {
                                                         setF("toAirport", "");
                                                     }
@@ -407,21 +406,17 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                         <Field label="To Airport" required htmlFor="toAirport">
                                             <AirportSelect
                                                 value={form.toAirport}
-                                                // (Optional) hide the chosen origin; enable after part B
-                                                // excludeCodes={form.fromAirport ? [form.fromAirport] : []}
                                                 onChange={(v) => {
-                                                    // Block selecting the same code as origin
                                                     if (v && form.fromAirport && v.toUpperCase() === form.fromAirport.toUpperCase()) {
                                                         setPopupMsg("Destination cannot be the same as origin.");
                                                         setPopupOpen(true);
-                                                        return; // don't accept the value
+                                                        return;
                                                     }
                                                     setF("toAirport", v);
                                                 }}
                                                 placeholder="Select destination (e.g., KUL)"
                                             />
                                         </Field>
-
 
                                         <Field label="Trip Type" htmlFor="routing">
                                             <div className="flex gap-2">
@@ -458,13 +453,13 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                     </div>
 
                                     {isForcedMultiCity && (
-                                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-                                            <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <div className="bg-[#001B71]/5 border border-[#001B71]/20 rounded-xl p-4 flex items-start gap-3">
+                                            <svg className="w-5 h-5 text-[#001B71] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                             <div>
-                                                <p className="font-medium text-blue-900">Multi-City Routing</p>
-                                                <p className="text-blue-700 text-sm mt-1">
+                                                <p className="font-medium text-[#001B71]">Multi-City Routing</p>
+                                                <p className="text-[#001B71] text-sm/6 mt-1 opacity-80">
                                                     You've selected a route that requires connecting through {HUB}. We'll automatically plan your journey with the optimal connections.
                                                 </p>
                                             </div>
@@ -555,8 +550,6 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                         </Field>
                                     </div>
 
-                                    {/* Inline helper removed as requested */}
-
                                     <Field label="Special Requests" htmlFor="specialRequest">
                                         <textarea
                                             id="specialRequest"
@@ -618,7 +611,7 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                     key={section.id}
                                     type="button"
                                     onClick={() => handleTabClick(section.id)}
-                                    className={`w-3 h-3 rounded-full ${activeSection === section.id ? "bg-blue-600" : "bg-gray-300"}`}
+                                    className={`step-dot ${activeSection === section.id ? "step-dot--active" : ""}`}
                                     aria-label={`Go to ${section.title}`}
                                 />
                             ))}
@@ -766,10 +759,10 @@ function SegmentRow({
 
 function Success(): JSX.Element {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+        <div className="min-h-screen page-gradient flex items-center justify-center p-4">
             <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-16 h-16 bg-[#EA0029]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-8 h-8 text-[#EA0029]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                 </div>
@@ -779,12 +772,6 @@ function Success(): JSX.Element {
                     We've received your group booking request. Our dedicated team will contact you within 24 hours with a
                     customized quotation.
                 </p>
-
-                <div className="bg-blue-50 rounded-xl p-4 mb-6">
-                    <p className="text-sm text-blue-700">
-                        <strong>Next steps:</strong> Check your email for a confirmation and keep your phone handy for our call.
-                    </p>
-                </div>
 
                 <a href="/" className="btn-primary w-full text-center">
                     Back to Homepage
