@@ -10,7 +10,7 @@ export type BookingStatus =
   | "TICKETED"
   | "CANCELLED";
 
-export type RequestCategory = "Direct Customer" | "GSA" | "CUSTOMER_CARE" | "AGENT";
+export type RequestCategory = "DIRECT_CUSTOMER" | "GSA" | "CUSTOMER_CARE" | "AGENT";
 export type QuotationStatus = "DRAFT" | "SENT" | "EXPIRED" | "ACCEPTED" | "REJECTED" | "RESENT";
 export type PaymentStatus = "PENDING" | "PAID" | "OVERDUE";
 export type Salutation = "MR" | "MRS" | "MISS" | "MS" | "DR" | "PROF" | "OTHER";
