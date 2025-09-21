@@ -19,6 +19,34 @@ const salutations: Salutation[] = ["MR", "MRS", "MISS", "MS", "DR", "PROF", "OTH
 const categories: RequestCategory[] = ["DIRECT_CUSTOMER", "GSA", "CUSTOMER_CARE", "AGENT"];
 const groupTypes: GroupType[] = ["EDUCATION", "CONFERENCE", "SPORTS", "PILGRIMAGE", "MICE", "OTHER"];
 
+/* ---------- Lightweight Popup ---------- */
+function Popup({
+    open,
+    message,
+    onClose,
+}: {
+    open: boolean;
+    message: string;
+    onClose: () => void;
+}) {
+    if (!open) return null;
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+            <div className="w-full max-w-md rounded-2xl bg-white shadow-xl p-6">
+                <div className="flex items-start gap-3">
+                    <svg className="w-6 h-6 text-[#001B71] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+                    </svg>
+                    <div className="text-gray-800">{message}</div>
+                </div>
+                <div className="mt-6 text-right">
+                    <button className="btn-primary" onClick={onClose}>OK</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function PublicGroupBookingForm(): JSX.Element {
     const [form, setForm] = useState<PublicGroupRequest>({
         salutation: "MR",
@@ -47,6 +75,10 @@ export default function PublicGroupBookingForm(): JSX.Element {
     const [activeSection, setActiveSection] = useState<"contact" | "trip" | "passengers" | "other">("contact");
     const [submitted, setSubmitted] = useState(false);
     const [err, setErr] = useState("");
+
+    // popup state
+    const [popupOpen, setPopupOpen] = useState(false);
+    const [popupMsg, setPopupMsg] = useState("");
 
     const isForcedMultiCity = useMemo(
         () =>
@@ -88,21 +120,34 @@ export default function PublicGroupBookingForm(): JSX.Element {
         setForm((p) => ({ ...p, [key]: val }));
     }
 
-    const totalPax = () => (form.paxAdult || 0) + (form.paxChild || 0) + (form.paxInfant || 0);
+    // Passengers logic
+    const totalGroup = () => (form.paxAdult || 0) + (form.paxChild || 0); // Adults + Children only
     const routingForPayload: RoutingType = isForcedMultiCity ? "MULTICITY" : form.routing;
+
+    const passengerRulesOk = () => {
+        if (totalGroup() < 10) return false;          // must be ≥ 10 (Adults + Children)
+        if ((form.paxInfant || 0) > 4) return false;  // infants ≤ 4
+        return true;
+    };
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
         setErr("");
 
         if (!form.firstName || !form.lastName) return setErr("Please enter your name.");
-        if (totalPax() < 1) return setErr("Total passengers must be at least 1.");
+        if (!passengerRulesOk()) {
+            if (totalGroup() < 10) return setErr("Minimum group size is 10 (Adults + Children).");
+            if (form.paxInfant > 4) return setErr("Maximum 4 infants are allowed.");
+        }
         if (!form.fromAirport || !form.toAirport) return setErr("Please select origin and destination.");
-        if ((form.category === "GSA" || form.category === "CUSTOMER_CARE") && !form.partnerId)
+        if ((form.category === "GSA" || form.category === "CUSTOMER_CARE" || form.category === "AGENT") && !form.partnerId)
             return setErr("Please enter the Partner / Customer Care ID.");
         if (segments.some((s) => !s.date)) return setErr("Please set a date for each segment.");
 
         const departureDate = segments[0]?.date || "";
+        if (form.routing === "RETURN" && segments.length < 2) {
+            return setErr("Return trip requires at least two segments.");
+        }
         const returnDate = form.routing === "RETURN" ? segments.at(-1)?.date || "" : undefined;
 
         const payload: PublicGroupRequestWithSegments = {
@@ -128,6 +173,14 @@ export default function PublicGroupBookingForm(): JSX.Element {
     function handleNext(e: React.MouseEvent<HTMLButtonElement>) {
         e.preventDefault();
         e.stopPropagation();
+
+        // Show popup on Passengers step if total (Adults + Children) < 10
+        if (activeSection === "passengers" && totalGroup() < 10) {
+            setPopupMsg("Minimum group size is 10 (Adults + Children).");
+            setPopupOpen(true);
+            return;
+        }
+
         const i = sections.findIndex((s) => s.id === activeSection);
         setActiveSection(sections[i + 1]?.id ?? "other");
     }
@@ -137,6 +190,34 @@ export default function PublicGroupBookingForm(): JSX.Element {
         e.stopPropagation();
         const i = sections.findIndex((s) => s.id === activeSection);
         setActiveSection(sections[i - 1]?.id ?? "contact");
+    }
+
+    // ---- NEW: Tab navigation guards ----
+    function canGoForward(target: typeof activeSection): boolean {
+        // If trying to go to "other" (after passengers), enforce group size rule
+        if (target === "other" && totalGroup() < 10) {
+            setPopupMsg("Minimum group size is 10 (Adults + Children).");
+            setPopupOpen(true);
+            return false;
+        }
+        return true;
+    }
+
+    function handleTabClick(target: typeof activeSection) {
+        const order = ["contact", "trip", "passengers", "other"] as const;
+        const curIdx = order.indexOf(activeSection);
+        const nextIdx = order.indexOf(target);
+
+        // Always allow going backwards or to same tab
+        if (nextIdx <= curIdx) {
+            setActiveSection(target);
+            return;
+        }
+
+        // Moving forward — gate it
+        if (canGoForward(target)) {
+            setActiveSection(target);
+        }
     }
 
     if (submitted) return <Success />;
@@ -149,17 +230,17 @@ export default function PublicGroupBookingForm(): JSX.Element {
     ] as const;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4 md:p-6">
+        <div className="min-h-screen bg-white flex items-center justify-center p-4">
             <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 md:p-8">
+                <div className="header-gradient text-white p-6 md:p-8">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
                             <h1 className="text-2xl md:text-3xl font-bold">Group Booking Request</h1>
                             <p className="text-blue-100 mt-2">Get the best rates for your group travel</p>
                         </div>
-                        <div className="bg-blue-500/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium inline-flex items-center gap-2 self-start">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="bg-white/15 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium inline-flex items-center gap-2 self-start">
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                             </svg>
                             Secure & Encrypted
@@ -167,31 +248,35 @@ export default function PublicGroupBookingForm(): JSX.Element {
                     </div>
                 </div>
 
-                {/* Progress Navigation */}
+                {/* Progress Navigation (clickable) */}
                 <div className="border-b border-gray-200">
-                    <div className="flex overflow-x-auto">
-                        {sections.map((section, index) => (
-                            <button
-                                key={section.id}
-                                type="button"
-                                onClick={() => setActiveSection(section.id)}
-                                className={`flex-1 min-w-[120px] px-4 py-3 text-sm font-medium transition-colors ${activeSection === section.id
-                                        ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                                        : "text-gray-500 hover:text-gray-700"
-                                    }`}
-                            >
-                                <div className="flex items-center gap-2 justify-center">
-                                    <div
-                                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${activeSection === section.id ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
-                                            }`}
-                                    >
-                                        {index + 1}
+                    <nav className="flex overflow-x-auto" role="tablist" aria-label="Booking steps">
+                        {sections.map((section, index) => {
+                            const isActive = activeSection === section.id;
+                            return (
+                                <button
+                                    key={section.id}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={isActive}
+                                    aria-controls={`panel-${section.id}`}
+                                    onClick={() => handleTabClick(section.id)}
+                                    className={`flex-1 min-w-[160px] px-4 py-3 text-sm font-medium transition-colors ${isActive ? "text-[#001B71] border-b-2 border-[#001B71] bg-[#001B71]/10" : "text-gray-500 hover:text-gray-700"
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-2 justify-center">
+                                        <div
+                                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${isActive ? "bg-[#001B71] text-white" : "bg-gray-200 text-gray-600"
+                                                }`}
+                                        >
+                                            {index + 1}
+                                        </div>
+                                        <span className="hidden sm:inline">{section.title}</span>
                                     </div>
-                                    <span className="hidden sm:inline">{section.title}</span>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
+                                </button>
+                            );
+                        })}
+                    </nav>
                 </div>
 
                 <form
@@ -205,293 +290,312 @@ export default function PublicGroupBookingForm(): JSX.Element {
                 >
                     {/* Contact */}
                     {activeSection === "contact" && (
-                        <Section title="Contact Information" description="Tell us how we can reach you">
-                            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                <Field label="Title" required htmlFor="salutation">
-                                    <select
-                                        id="salutation"
-                                        className="input-select"
-                                        value={form.salutation}
-                                        onChange={(e) => setF("salutation", e.target.value as Salutation)}
-                                    >
-                                        {salutations.map((x) => (
-                                            <option key={x} value={x}>
-                                                {x}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </Field>
-
-                                <Field label="First name" required htmlFor="firstName">
-                                    <input
-                                        id="firstName"
-                                        className="input"
-                                        value={form.firstName}
-                                        onChange={(e) => setF("firstName", e.target.value)}
-                                        placeholder="Enter your first name"
-                                    />
-                                </Field>
-
-                                <Field label="Last name" required htmlFor="lastName">
-                                    <input
-                                        id="lastName"
-                                        className="input"
-                                        value={form.lastName}
-                                        onChange={(e) => setF("lastName", e.target.value)}
-                                        placeholder="Enter your last name"
-                                    />
-                                </Field>
-
-                                <Field label="Email" required htmlFor="email">
-                                    <input
-                                        id="email"
-                                        className="input"
-                                        type="email"
-                                        value={form.email}
-                                        onChange={(e) => setF("email", e.target.value)}
-                                        placeholder="your.email@example.com"
-                                    />
-                                </Field>
-
-                                <Field label="Contact number" required htmlFor="contactNumber">
-                                    <input
-                                        id="contactNumber"
-                                        className="input"
-                                        value={form.contactNumber}
-                                        onChange={(e) => setF("contactNumber", e.target.value)}
-                                        placeholder="+94 77 123 4567"
-                                    />
-                                </Field>
-
-                                <Field label="Category" htmlFor="category">
-                                    <select
-                                        id="category"
-                                        className="input-select"
-                                        value={form.category}
-                                        onChange={(e) => setF("category", e.target.value as RequestCategory)}
-                                    >
-                                        {categories.map((x) => (
-                                            <option key={x} value={x}>
-                                                {x.replace("_", " ")}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </Field>
-
-                                {(form.category === "GSA" || form.category === "CUSTOMER_CARE") && (
-                                    <Field label="Partner / Customer Care ID" required htmlFor="partnerId">
-                                        <input
-                                            id="partnerId"
-                                            className="input"
-                                            value={form.partnerId ?? ""}
-                                            onChange={(e) => setF("partnerId", e.target.value)}
-                                            placeholder="Enter your partner ID"
-                                        />
-                                    </Field>
-                                )}
-
-                                <Field label="POS Country" required htmlFor="posCode">
-                                    <PosSelect
-                                        value={form.posCode}
-                                        onChange={(v) => setF("posCode", v)}
-                                        category={form.category}
-                                    />
-                                </Field>
-                            </div>
-                        </Section>
-                    )}
-
-                    {/* Trip */}
-                    {activeSection === "trip" && (
-                        <Section title="Trip Details" description="Where and when are you traveling?">
-                            <div className="space-y-6">
-                                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    <Field label="From Airport" required htmlFor="fromAirport">
-                                        <AirportSelect
-                                            value={form.fromAirport}
-                                            onChange={(v) => setF("fromAirport", v)}
-                                            placeholder="Select origin (e.g., CMB)"
-                                        />
-                                    </Field>
-
-                                    <Field label="To Airport" required htmlFor="toAirport">
-                                        <AirportSelect
-                                            value={form.toAirport}
-                                            onChange={(v) => setF("toAirport", v)}
-                                            placeholder="Select destination (e.g., KUL)"
-                                        />
-                                    </Field>
-
-                                    <Field label="Trip Type" htmlFor="routing">
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                className={`btn-tab ${form.routing === "ONE_WAY" ? "btn-tab-active" : ""}`}
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    setF("routing", "ONE_WAY");
-                                                }}
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                                </svg>
-                                                One Way
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className={`btn-tab ${form.routing === "RETURN" ? "btn-tab-active" : ""}`}
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    setF("routing", "RETURN");
-                                                }}
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                                </svg>
-                                                Return
-                                            </button>
-                                        </div>
-                                    </Field>
-                                </div>
-
-                                {isForcedMultiCity && (
-                                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-                                        <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <div>
-                                            <p className="font-medium text-blue-900">Multi-City Routing</p>
-                                            <p className="text-blue-700 text-sm mt-1">
-                                                You've selected a route that requires connecting through {HUB}. We'll automatically plan your journey with the optimal connections.
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="space-y-4">
-                                    <h4 className="font-semibold text-gray-900">Flight Segments</h4>
-                                    {segments.map((seg, i) => (
-                                        <SegmentRow
-                                            key={`${seg.from}-${seg.to}-${i}`}
-                                            seg={seg}
-                                            index={i}
-                                            totalSegments={segments.length}
-                                            onChange={(s) => {
-                                                const copy = segments.slice();
-                                                copy[i] = s;
-                                                setSegments(copy);
-                                            }}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        </Section>
-                    )}
-
-                    {/* Passengers */}
-                    {activeSection === "passengers" && (
-                        <Section title="Passengers & Group" description="Tell us about your group">
-                            <div className="space-y-6">
-                                <div className="grid md:grid-cols-2 lg:grid-cols-6 gap-6">
-                                    <Field label="Adults" htmlFor="paxAdult">
-                                        <input
-                                            id="paxAdult"
-                                            className="input-number"
-                                            type="number"
-                                            min={0}
-                                            value={form.paxAdult}
-                                            onChange={(e) => setF("paxAdult", Number(e.target.value))}
-                                        />
-                                    </Field>
-                                    <Field label="Children" htmlFor="paxChild">
-                                        <input
-                                            id="paxChild"
-                                            className="input-number"
-                                            type="number"
-                                            min={0}
-                                            value={form.paxChild}
-                                            onChange={(e) => setF("paxChild", Number(e.target.value))}
-                                        />
-                                    </Field>
-                                    <Field label="Infants" htmlFor="paxInfant">
-                                        <input
-                                            id="paxInfant"
-                                            className="input-number"
-                                            type="number"
-                                            min={0}
-                                            value={form.paxInfant}
-                                            onChange={(e) => setF("paxInfant", Number(e.target.value))}
-                                        />
-                                    </Field>
-                                    <Field label="Total" htmlFor="totalPax">
-                                        <div
-                                            id="totalPax"
-                                            className="h-12 flex items-center justify-center px-4 border border-gray-300 rounded-xl bg-gray-50 font-semibold text-lg"
-                                        >
-                                            {totalPax()}
-                                        </div>
-                                    </Field>
-                                    <Field label="Group Type" htmlFor="groupType">
+                        <div id="panel-contact" role="tabpanel" aria-labelledby="tab-contact">
+                            <Section title="Contact Information" description="Tell us how we can reach you">
+                                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    <Field label="Title" required htmlFor="salutation">
                                         <select
-                                            id="groupType"
+                                            id="salutation"
                                             className="input-select"
-                                            value={form.groupType}
-                                            onChange={(e) => setF("groupType", e.target.value as GroupType)}
+                                            value={form.salutation}
+                                            onChange={(e) => setF("salutation", e.target.value as Salutation)}
                                         >
-                                            {groupTypes.map((x) => (
+                                            {salutations.map((x) => (
+                                                <option key={x} value={x}>
+                                                    {x}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </Field>
+
+                                    <Field label="First name" required htmlFor="firstName">
+                                        <input
+                                            id="firstName"
+                                            className="input"
+                                            value={form.firstName}
+                                            onChange={(e) => setF("firstName", e.target.value)}
+                                            placeholder="Enter your first name"
+                                        />
+                                    </Field>
+
+                                    <Field label="Last name" required htmlFor="lastName">
+                                        <input
+                                            id="lastName"
+                                            className="input"
+                                            value={form.lastName}
+                                            onChange={(e) => setF("lastName", e.target.value)}
+                                            placeholder="Enter your last name"
+                                        />
+                                    </Field>
+
+                                    <Field label="Email" required htmlFor="email">
+                                        <input
+                                            id="email"
+                                            className="input"
+                                            type="email"
+                                            value={form.email}
+                                            onChange={(e) => setF("email", e.target.value)}
+                                            placeholder="your.email@example.com"
+                                        />
+                                    </Field>
+
+                                    <Field label="Contact number" required htmlFor="contactNumber">
+                                        <input
+                                            id="contactNumber"
+                                            className="input"
+                                            value={form.contactNumber}
+                                            onChange={(e) => setF("contactNumber", e.target.value)}
+                                            placeholder="+94 77 123 4567"
+                                        />
+                                    </Field>
+
+                                    <Field label="Category" htmlFor="category">
+                                        <select
+                                            id="category"
+                                            className="input-select"
+                                            value={form.category}
+                                            onChange={(e) => setF("category", e.target.value as RequestCategory)}
+                                        >
+                                            {categories.map((x) => (
                                                 <option key={x} value={x}>
                                                     {x.replace("_", " ")}
                                                 </option>
                                             ))}
                                         </select>
                                     </Field>
-                                </div>
 
-                                <Field label="Special Requests" htmlFor="specialRequest">
-                                    <textarea
-                                        id="specialRequest"
-                                        className="textarea"
-                                        rows={3}
-                                        value={form.specialRequest ?? ""}
-                                        onChange={(e) => setF("specialRequest", e.target.value)}
-                                        placeholder="Meal preferences, baggage requirements, accessibility needs, etc."
-                                    />
-                                </Field>
-                            </div>
-                        </Section>
+                                    {(form.category === "GSA" || form.category === "CUSTOMER_CARE" || form.category === "AGENT") && (
+                                        <Field label="Partner / Customer Care ID" required htmlFor="partnerId">
+                                            <input
+                                                id="partnerId"
+                                                className="input"
+                                                value={form.partnerId ?? ""}
+                                                onChange={(e) => setF("partnerId", e.target.value)}
+                                                placeholder="Enter your partner or customer care ID"
+                                            />
+                                        </Field>
+                                    )}
+
+                                    <Field label="POS Country" required htmlFor="posCode">
+                                        <PosSelect value={form.posCode} onChange={(v) => setF("posCode", v)} category={form.category} />
+                                    </Field>
+                                </div>
+                            </Section>
+                        </div>
+                    )}
+
+                    {/* Trip */}
+                    {activeSection === "trip" && (
+                        <div id="panel-trip" role="tabpanel" aria-labelledby="tab-trip">
+                            <Section title="Trip Details" description="Where and when are you traveling?">
+                                <div className="space-y-6">
+                                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        <Field label="From Airport" required htmlFor="fromAirport">
+                                            <AirportSelect
+                                                value={form.fromAirport}
+                                                onChange={(v) => {
+                                                    setF("fromAirport", v);
+                                                    if (v && form.toAirport && v.toUpperCase() === form.toAirport.toUpperCase()) {
+                                                        setF("toAirport", "");
+                                                    }
+                                                }}
+                                                placeholder="Select origin (e.g., CMB)"
+                                            />
+                                        </Field>
+
+                                        <Field label="To Airport" required htmlFor="toAirport">
+                                            <AirportSelect
+                                                value={form.toAirport}
+                                                onChange={(v) => {
+                                                    if (v && form.fromAirport && v.toUpperCase() === form.fromAirport.toUpperCase()) {
+                                                        setPopupMsg("Destination cannot be the same as origin.");
+                                                        setPopupOpen(true);
+                                                        return;
+                                                    }
+                                                    setF("toAirport", v);
+                                                }}
+                                                placeholder="Select destination (e.g., KUL)"
+                                            />
+                                        </Field>
+
+                                        <Field label="Trip Type" htmlFor="routing">
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    className={`btn-tab ${form.routing === "ONE_WAY" ? "btn-tab-active" : ""}`}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        setF("routing", "ONE_WAY");
+                                                    }}
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                                    </svg>
+                                                    One Way
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`btn-tab ${form.routing === "RETURN" ? "btn-tab-active" : ""}`}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        setF("routing", "RETURN");
+                                                    }}
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                    </svg>
+                                                    Return
+                                                </button>
+                                            </div>
+                                        </Field>
+                                    </div>
+
+                                    {isForcedMultiCity && (
+                                        <div className="bg-[#001B71]/5 border border-[#001B71]/20 rounded-xl p-4 flex items-start gap-3">
+                                            <svg className="w-5 h-5 text-[#001B71] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <div>
+                                                <p className="font-medium text-[#001B71]">Multi-City Routing</p>
+                                                <p className="text-[#001B71] text-sm/6 mt-1 opacity-80">
+                                                    You've selected a route that requires connecting through {HUB}. We'll automatically plan your journey with the optimal connections.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold text-gray-900">Flight Segments</h4>
+                                        {segments.map((seg, i) => (
+                                            <SegmentRow
+                                                key={`${seg.from}-${seg.to}-${i}`}
+                                                seg={seg}
+                                                index={i}
+                                                totalSegments={segments.length}
+                                                onChange={(s) => {
+                                                    const copy = segments.slice();
+                                                    copy[i] = s;
+                                                    setSegments(copy);
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            </Section>
+                        </div>
+                    )}
+
+                    {/* Passengers */}
+                    {activeSection === "passengers" && (
+                        <div id="panel-passengers" role="tabpanel" aria-labelledby="tab-passengers">
+                            <Section title="Passengers & Group" description="Tell us about your group">
+                                <div className="space-y-6">
+                                    <div className="grid md:grid-cols-2 lg:grid-cols-6 gap-6">
+                                        <Field label="Adults" htmlFor="paxAdult">
+                                            <input
+                                                id="paxAdult"
+                                                className="input-number"
+                                                type="number"
+                                                min={0}
+                                                value={form.paxAdult}
+                                                onChange={(e) => setF("paxAdult", Number(e.target.value))}
+                                            />
+                                        </Field>
+                                        <Field label="Children" htmlFor="paxChild">
+                                            <input
+                                                id="paxChild"
+                                                className="input-number"
+                                                type="number"
+                                                min={0}
+                                                value={form.paxChild}
+                                                onChange={(e) => setF("paxChild", Number(e.target.value))}
+                                            />
+                                        </Field>
+                                        <Field label="Infants (max 4)" htmlFor="paxInfant">
+                                            <input
+                                                id="paxInfant"
+                                                className="input-number"
+                                                type="number"
+                                                min={0}
+                                                max={4}
+                                                value={form.paxInfant}
+                                                onChange={(e) =>
+                                                    setF("paxInfant", Math.min(4, Math.max(0, Number(e.target.value))))
+                                                }
+                                            />
+                                        </Field>
+                                        <Field label="Total (Adults + Children)" htmlFor="totalPax">
+                                            <div
+                                                id="totalPax"
+                                                className="h-12 flex items-center justify-center px-4 border border-gray-300 rounded-xl bg-gray-50 font-semibold text-lg"
+                                            >
+                                                {totalGroup()}
+                                            </div>
+                                        </Field>
+                                        <Field label="Group Type" htmlFor="groupType">
+                                            <select
+                                                id="groupType"
+                                                className="input-select"
+                                                value={form.groupType}
+                                                onChange={(e) => setF("groupType", e.target.value as GroupType)}
+                                            >
+                                                {groupTypes.map((x) => (
+                                                    <option key={x} value={x}>
+                                                        {x.replace("_", " ")}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </Field>
+                                    </div>
+
+                                    <Field label="Special Requests" htmlFor="specialRequest">
+                                        <textarea
+                                            id="specialRequest"
+                                            className="textarea"
+                                            rows={3}
+                                            value={form.specialRequest ?? ""}
+                                            onChange={(e) => setF("specialRequest", e.target.value)}
+                                            placeholder="Meal preferences, baggage requirements, accessibility needs, etc."
+                                        />
+                                    </Field>
+                                </div>
+                            </Section>
+                        </div>
                     )}
 
                     {/* Other */}
                     {activeSection === "other" && (
-                        <Section title="Additional Information" description="Final details for your booking">
-                            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                <Field label="Currency" htmlFor="currency">
-                                    <input
-                                        id="currency"
-                                        className="input uppercase"
-                                        value={form.currency}
-                                        onChange={(e) => setF("currency", e.target.value)}
-                                        placeholder="LKR"
-                                    />
-                                </Field>
-                                <Field label="Flight Number (Optional)" htmlFor="flightNumber">
-                                    <input
-                                        id="flightNumber"
-                                        className="input"
-                                        value={form.flightNumber ?? ""}
-                                        onChange={(e) => setF("flightNumber", e.target.value)}
-                                        placeholder="UL 123"
-                                    />
-                                </Field>
-                            </div>
-                        </Section>
+                        <div id="panel-other" role="tabpanel" aria-labelledby="tab-other">
+                            <Section title="Additional Information" description="Final details for your booking">
+                                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    <Field label="Currency" htmlFor="currency">
+                                        <input
+                                            id="currency"
+                                            className="input uppercase"
+                                            value={form.currency}
+                                            onChange={(e) => setF("currency", e.target.value)}
+                                            placeholder="LKR"
+                                        />
+                                    </Field>
+                                    <Field label="Flight Number (Optional)" htmlFor="flightNumber">
+                                        <input
+                                            id="flightNumber"
+                                            className="input"
+                                            value={form.flightNumber ?? ""}
+                                            onChange={(e) => setF("flightNumber", e.target.value)}
+                                            placeholder="8D 123"
+                                        />
+                                    </Field>
+                                </div>
+                            </Section>
+                        </div>
                     )}
 
                     {err && (
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                            <p className="text-red-700 font-medium flex items-center gap-2">
+                        <div className="bg-red-50 border border-red-200 rounded-xl">
+                            <p className="text-red-700 font-medium flex items-center gap-2 p-4">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
@@ -506,8 +610,8 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                 <button
                                     key={section.id}
                                     type="button"
-                                    onClick={() => setActiveSection(section.id)}
-                                    className={`w-3 h-3 rounded-full ${activeSection === section.id ? "bg-blue-600" : "bg-gray-300"}`}
+                                    onClick={() => handleTabClick(section.id)}
+                                    className={`step-dot ${activeSection === section.id ? "step-dot--active" : ""}`}
                                     aria-label={`Go to ${section.title}`}
                                 />
                             ))}
@@ -533,6 +637,9 @@ export default function PublicGroupBookingForm(): JSX.Element {
                     </div>
                 </form>
             </div>
+
+            {/* Popup */}
+            <Popup open={popupOpen} message={popupMsg} onClose={() => setPopupOpen(false)} />
         </div>
     );
 }
@@ -550,7 +657,6 @@ function Section({ title, description, children }: { title: string; description?
     );
 }
 
-// Safer Field: no wrapper <label> around everything. Uses htmlFor + input ids.
 function Field({
     label,
     required,
@@ -586,6 +692,8 @@ function SegmentRow({
     totalSegments: number;
     onChange: (s: Segment) => void;
 }) {
+    const baggageOptions = [0, 10, 20, 25, 30, 40];
+
     return (
         <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
             <div className="flex items-center justify-between mb-4">
@@ -611,17 +719,27 @@ function SegmentRow({
                         min={new Date().toISOString().split("T")[0]}
                     />
                 </div>
+
                 <div>
                     <div className="field-label">Extra Baggage (kg)</div>
-                    <input
-                        className="input"
-                        type="number"
-                        min={0}
-                        value={seg.extras?.extraBaggageKg ?? ""}
-                        placeholder="0"
-                        onChange={(e) => onChange({ ...seg, extras: { ...seg.extras, extraBaggageKg: Number(e.target.value) } })}
-                    />
+                    <select
+                        className="input-select"
+                        value={seg.extras?.extraBaggageKg ?? 0}
+                        onChange={(e) =>
+                            onChange({
+                                ...seg,
+                                extras: { ...seg.extras, extraBaggageKg: Number(e.target.value) },
+                            })
+                        }
+                    >
+                        {baggageOptions.map((kg) => (
+                            <option key={kg} value={kg}>
+                                {kg}
+                            </option>
+                        ))}
+                    </select>
                 </div>
+
                 <div className="lg:col-span-3">
                     <div className="field-label">Special Requirements</div>
                     <input
@@ -641,10 +759,10 @@ function SegmentRow({
 
 function Success(): JSX.Element {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+        <div className="min-h-screen page-gradient flex items-center justify-center p-4">
             <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-16 h-16 bg-[#EA0029]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-8 h-8 text-[#EA0029]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                 </div>
@@ -654,12 +772,6 @@ function Success(): JSX.Element {
                     We've received your group booking request. Our dedicated team will contact you within 24 hours with a
                     customized quotation.
                 </p>
-
-                <div className="bg-blue-50 rounded-xl p-4 mb-6">
-                    <p className="text-sm text-blue-700">
-                        <strong>Next steps:</strong> Check your email for a confirmation and keep your phone handy for our call.
-                    </p>
-                </div>
 
                 <a href="/" className="btn-primary w-full text-center">
                     Back to Homepage
