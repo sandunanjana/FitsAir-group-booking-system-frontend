@@ -58,6 +58,9 @@ export type GroupRequestDTO = {
 
   /** Assigned Route Controller username */
   assignedRcUsername?: string;
+
+  /** Optional PNR once ticketed/issued */
+  pnr?: string | null;
 };
 
 export type QuotationDTO = {
@@ -87,9 +90,16 @@ export type Segment = {
   to: string;    // IATA
   date: string;  // yyyy-MM-dd
   extras?: {
+    // existing extras
     extraBaggageKg?: number;
     meal?: string;
     notes?: string;
+
+    // NEW: proposal fields that your UI now uses
+    proposedDate?: string | null;
+    proposedTime?: string | null;        // e.g. "10:30" (HH:mm) or a window like "10:00-12:00"
+    offeredBaggageKg?: number | null;    // override/offer vs requested
+    note?: string | null;                // per-segment note to agent
   };
 };
 
@@ -100,6 +110,15 @@ export type DashboardStatsDTO = {
   confirmedGroupsWithPaymentsDueToday: number;
   quotationsForFollowUpToday: number;
 };
+
+// Replace the existing fetchDashboard with this version:
+export const fetchDashboard = (lastLoginDate?: string) =>
+  api.get<DashboardStatsDTO>(
+    `/api/dashboard/stats${
+      lastLoginDate ? `?lastLoginDate=${encodeURIComponent(lastLoginDate)}` : ""
+    }`
+  );
+
 
 /* ========= Admin users (for RC picker) ========= */
 export type Role = "GROUP_DESK" | "ROUTE_CONTROLLER" | "ADMIN";
@@ -134,12 +153,48 @@ export const updateGroupRequest = (id: number, dto: GroupRequestDTO) =>
 export const deleteGroupRequest = (id: number) =>
   api.delete(`/api/group-requests/${id}`);
 
-/** Assign to RC + move to REVIEWING (uses `assignedRc` as per backend) */
+/** Assign to RC + move to REVIEWING (backend expects `assignedRc` query) */
 export const sendGroupRequestToRC = (id: number, rcUsername: string) =>
-  api.patch(`/api/group-requests/${id}/send-to-rc?assignedRc=${encodeURIComponent(rcUsername)}`);
+  api.patch(
+    `/api/group-requests/${id}/send-to-rc?assignedRc=${encodeURIComponent(rcUsername)}`
+  );
 
 export const markGroupRequestTicketed = (id: number) =>
   api.patch(`/api/group-requests/${id}/mark-ticketed`);
+
+/** Update a segment date by index (1-based as per your usage) */
+export const updateSegmentDate = (
+  groupRequestId: number,
+  segmentIndex1Based: number,
+  newDate: string
+) =>
+  api.patch(
+    `/api/group-requests/${groupRequestId}/segments/${segmentIndex1Based}/date?date=${encodeURIComponent(newDate)}`
+  );
+
+/** Per-segment extras / proposals (accept nulls from UI to "clear" a field) */
+export const updateSegmentExtras = (
+  groupId: number,
+  segmentIndex: number,
+  payload: {
+    proposedDate?: string | null;
+    proposedTime?: string | null;
+    offeredBaggageKg?: number | null;
+    note?: string | null;
+  }
+) =>
+  api.patch(
+    `/api/group-requests/${groupId}/segments/${segmentIndex}/extras`,
+    payload
+  );
+
+/** Notify agent with the accumulated per-segment proposals */
+export const notifySegmentChangesToAgent = (groupId: number) =>
+  api.post(`/api/group-requests/${groupId}/segments/notify-agent`, {});
+
+/** Save PNR to a group request (PATCH body) */
+export const sendPNRToAgent = (groupId: number, pnr: string) =>
+  api.patch<GroupRequestDTO>(`/api/group-requests/${groupId}/pnr`, { pnr });
 
 /* ========= Quotations ========= */
 export const listQuotations = (page = 0, size = 20) =>
@@ -157,7 +212,8 @@ export const updateQuoteStatus = (
   approvedBy?: string
 ) =>
   api.patch<QuotationDTO>(
-    `/api/quotations/${id}/status?status=${status}${approvedBy ? `&approvedBy=${encodeURIComponent(approvedBy)}` : ""
+    `/api/quotations/${id}/status?status=${status}${
+      approvedBy ? `&approvedBy=${encodeURIComponent(approvedBy)}` : ""
     }`
   );
 
@@ -171,9 +227,10 @@ export const resendQuotationSimple = (expiredId: number) =>
 
 export const sendQuotationToAgent = (id: number, subject?: string) =>
   api.patch<QuotationDTO>(
-    `/api/quotations/${id}/send-to-agent${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`
+    `/api/quotations/${id}/send-to-agent${
+      subject ? `?subject=${encodeURIComponent(subject)}` : ""
+    }`
   );
-
 
 export const acceptQuotation = (id: number) =>
   api.patch<QuotationDTO>(`/api/quotations/${id}/accept`);
@@ -184,7 +241,8 @@ export const listPayments = (page = 0, size = 20) =>
 
 export const markPaymentPaid = (id: number, reference?: string) =>
   api.patch<PaymentDTO>(
-    `/api/payments/${id}/mark-paid${reference ? `?reference=${encodeURIComponent(reference)}` : ""
+    `/api/payments/${id}/mark-paid${
+      reference ? `?reference=${encodeURIComponent(reference)}` : ""
     }`
   );
 
@@ -193,8 +251,29 @@ export type PaymentAttachmentDTO = {
   filename: string;
   contentType: string;
   size: number;
-  uploadedAt: string;
+  uploadedAt: string; // ISO timestamp
 };
+
+export const listPaymentAttachments = (paymentId: number) =>
+  api.get<PaymentAttachmentDTO[]>(
+    `/api/payments/${paymentId}/attachments`
+  );
+
+export const uploadPaymentAttachment = (paymentId: number, file: File) => {
+  const form = new FormData();
+  form.append("file", file);
+  // IMPORTANT: do not set Content-Type manually; axios sets the boundary
+  return api.post<PaymentAttachmentDTO>(
+    `/api/payments/${paymentId}/attachments`,
+    form
+  );
+};
+
+export const downloadPaymentAttachment = (attachmentId: number) =>
+  api.get<ArrayBuffer>(
+    `/api/payments/attachments/${attachmentId}/download`,
+    { responseType: "arraybuffer" }
+  );
 
 /* ========= Public Form ========= */
 export type PublicGroupRequest = {
@@ -233,42 +312,3 @@ export const submitPublicGroupRequestWithSegments = (
   payload: PublicGroupRequestWithSegments
 ) => api.post<GroupRequestDTO>("/api/public/group-requests", payload);
 
-export const listPaymentAttachments = (paymentId: number) =>
-  api.get<PaymentAttachmentDTO[]>(`/api/payments/${paymentId}/attachments`);
-
-export const uploadPaymentAttachment = (paymentId: number, file: File) => {
-  const form = new FormData();
-  form.append("file", file);
-  // IMPORTANT: do not set Content-Type manually; axios adds boundary.
-  return api.post<PaymentAttachmentDTO>(`/api/payments/${paymentId}/attachments`, form);
-};
-
-export const downloadPaymentAttachment = (attachmentId: number) =>
-  api.get<ArrayBuffer>(`/api/payments/attachments/${attachmentId}/download`, {
-    responseType: "arraybuffer",
-  });
-
-export const sendPNRToAgent = (groupId: number, pnr: string) =>
-  api.patch<GroupRequestDTO>(`/api/group-requests/${groupId}/pnr`, { pnr });
-
-export const updateSegmentDate = (
-  groupRequestId: number,
-  segmentIndex1Based: number,
-  newDate: string
-) =>
-  api.patch(
-    `/api/group-requests/${groupRequestId}/segments/${segmentIndex1Based}/date?date=${encodeURIComponent(newDate)}`
-  );
-
-export const updateSegmentExtras = (
-  groupId: number,
-  segmentIndex: number,
-  payload: { proposedDate?: string; proposedTime?: string; offeredBaggageKg?: number; note?: string; }
-) =>
-  api.patch(
-    `/api/group-requests/${groupId}/segments/${segmentIndex}/extras`,
-    payload
-  );
-
-export const notifySegmentChangesToAgent = (groupId: number) =>
-  api.post(`/api/group-requests/${groupId}/segments/notify-agent`, {});

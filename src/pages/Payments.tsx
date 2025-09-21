@@ -186,10 +186,10 @@ export default function Payments(): JSX.Element {
       ) : filteredRows.length === 0 ? (
         <EmptyState hasFilter={!!searchTerm || statusFilter !== "ALL"} />
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-auto max-h=[calc(100vh-250px)]">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-260px)]">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <Th>ID</Th>
                   <Th>Group ID</Th>
@@ -479,47 +479,73 @@ function AttachmentsModal({
 }
 
 /* ===================== UI bits ===================== */
-function SkeletonTable() { /* unchanged */ return (
-  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <div className="overflow-auto max-h-[calc(100vh-250px)]">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <Th>ID</Th><Th>Group ID</Th><Th>Amount</Th><Th>Due Date</Th><Th>Status</Th><Th>Reference</Th><Th>Files</Th><Th>Actions</Th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {[...Array(5)].map((_, i) => (
-            <tr key={i}>
-              {[...Array(8)].map((_, j) => (
-                <Td key={j}><div className="h-4 bg-gray-200 rounded animate-pulse"></div></Td>
-              ))}
+function SkeletonTable() {
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="overflow-auto max-h-[calc(100vh-250px)]">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50 sticky top-0 z-10">
+            <tr>
+              <Th>ID</Th>
+              <Th>Group ID</Th>
+              <Th>Amount</Th>
+              <Th>Due Date</Th>
+              <Th>Status</Th>
+              <Th>Reference</Th>
+              <Th>Files</Th>
+              <Th>Actions</Th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {[...Array(5)].map((_, i) => (
+              <tr key={i}>
+                {[...Array(8)].map((_, j) => (
+                  <Td key={j}>
+                    <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                  </Td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
-);}
+  );
+}
 
-function EmptyState({ hasFilter }: { hasFilter: boolean }) { /* unchanged */ return (
-  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-    <h3 className="mt-2 text-sm font-medium text-gray-900">No payments found</h3>
-    <p className="mt-1 text-sm text-gray-500">
-      {hasFilter ? "Try adjusting your search or filter criteria" : "No payments have been recorded yet"}
-    </p>
-  </div>
-);}
+function EmptyState({ hasFilter }: { hasFilter: boolean }) {
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <h3 className="mt-2 text-sm font-medium text-gray-900">No payments found</h3>
+      <p className="mt-1 text-sm text-gray-500">
+        {hasFilter ? "Try adjusting your search or filter criteria" : "No payments have been recorded yet"}
+      </p>
+    </div>
+  );
+}
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">{children}</th>;
+  return (
+    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+      {children}
+    </th>
+  );
 }
-function Td({ children, className = "", ...rest }: React.TdHTMLAttributes<HTMLTableCellElement> & { children?: React.ReactNode }) {
-  return <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 ${className}`} {...rest}>{children}</td>;
+
+function Td(
+  { children, className = "", ...rest }:
+  React.TdHTMLAttributes<HTMLTableCellElement> & { children?: React.ReactNode }
+) {
+  return (
+    <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 ${className}`} {...rest}>
+      {children}
+    </td>
+  );
 }
+
 function StatCard({ label, value, accent = "text-gray-900" }: { label: string; value: number; accent?: string }) {
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -528,6 +554,7 @@ function StatCard({ label, value, accent = "text-gray-900" }: { label: string; v
     </div>
   );
 }
+
 function prettyBytes(n: number) {
   if (n < 1024) return `${n} B`;
   const kb = n / 1024;
@@ -536,8 +563,4 @@ function prettyBytes(n: number) {
   if (mb < 1024) return `${mb.toFixed(1)} MB`;
   const gb = mb / 1024;
   return `${gb.toFixed(1)} GB`;
-
 }
-
-
-// this is sandun's changeknm
