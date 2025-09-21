@@ -100,8 +100,6 @@ export type DashboardStatsDTO = {
   confirmedGroupsWithPaymentsDueToday: number;
   quotationsForFollowUpToday: number;
 };
-export const fetchDashboard = () =>
-  api.get<DashboardStatsDTO>("/api/dashboard/stats");
 
 /* ========= Admin users (for RC picker) ========= */
 export type Role = "GROUP_DESK" | "ROUTE_CONTROLLER" | "ADMIN";
@@ -171,8 +169,11 @@ export const resendQuotation = (expiredId: number, dto: QuotationDTO) =>
 export const resendQuotationSimple = (expiredId: number) =>
   api.patch<QuotationDTO>(`/api/quotations/${expiredId}/resend-simple`);
 
-export const sendQuotationToAgent = (id: number) =>
-  api.patch<QuotationDTO>(`/api/quotations/${id}/send-to-agent`);
+export const sendQuotationToAgent = (id: number, subject?: string) =>
+  api.patch<QuotationDTO>(
+    `/api/quotations/${id}/send-to-agent${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`
+  );
+
 
 export const acceptQuotation = (id: number) =>
   api.patch<QuotationDTO>(`/api/quotations/${id}/accept`);
@@ -250,7 +251,24 @@ export const downloadPaymentAttachment = (attachmentId: number) =>
 export const sendPNRToAgent = (groupId: number, pnr: string) =>
   api.patch<GroupRequestDTO>(`/api/group-requests/${groupId}/pnr`, { pnr });
 
-// src/api/endpoints.ts (append)
-export const updateSegmentDate = (groupRequestId: number, segmentIndex1Based: number, newDate: string) =>
-  api.patch(`/api/group-requests/${groupRequestId}/segments/${segmentIndex1Based}/date?date=${encodeURIComponent(newDate)}`);
+export const updateSegmentDate = (
+  groupRequestId: number,
+  segmentIndex1Based: number,
+  newDate: string
+) =>
+  api.patch(
+    `/api/group-requests/${groupRequestId}/segments/${segmentIndex1Based}/date?date=${encodeURIComponent(newDate)}`
+  );
 
+export const updateSegmentExtras = (
+  groupId: number,
+  segmentIndex: number,
+  payload: { proposedDate?: string; proposedTime?: string; offeredBaggageKg?: number; note?: string; }
+) =>
+  api.patch(
+    `/api/group-requests/${groupId}/segments/${segmentIndex}/extras`,
+    payload
+  );
+
+export const notifySegmentChangesToAgent = (groupId: number) =>
+  api.post(`/api/group-requests/${groupId}/segments/notify-agent`, {});

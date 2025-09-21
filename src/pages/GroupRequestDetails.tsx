@@ -16,11 +16,14 @@ import {
     acceptQuotation,
     listUsersByRole,
     updateGroupRequest,
+    updateSegmentExtras,
+    notifySegmentChangesToAgent,
     type GroupRequestDetails as Details,
     type QuotationDTO,
     type GroupRequestDTO,
 } from "@/api/endpoints";
 import { useAuthStore } from "@/auth/store";
+import type { BookingStatus } from "@/api/endpoints";
 
 export default function GroupRequestDetails(): JSX.Element {
     const { id } = useParams();
@@ -45,6 +48,76 @@ export default function GroupRequestDetails(): JSX.Element {
         contactNumber: "",
     });
 
+    // ===== per-segment proposal form cache (by row index) =====
+    const [segForm, setSegForm] = useState<
+        Record<
+            number,
+            {
+                proposedDate?: string;
+                proposedTime?: string;
+                offeredBaggageKg?: string; // keep as string for inputs
+                note?: string;
+            }
+        >
+    >({});
+
+    function segVal(i: number) {
+        const s = data?.segments[i];
+        const e = s?.extras || {};
+        return (
+            segForm[i] ?? {
+                proposedDate: (e as any).proposedDate ?? "",
+                proposedTime: (e as any).proposedTime ?? "",
+                offeredBaggageKg:
+                    (e as any).offeredBaggageKg != null
+                        ? String((e as any).offeredBaggageKg)
+                        : "",
+                note: (e as any).note ?? "",
+            }
+        );
+    }
+
+    async function onSaveSegment(i: number): Promise<void> {
+        if (!id) return;
+        const idx1 = i + 1;
+        const values = segVal(i);
+        const payload: {
+            proposedDate?: string;
+            proposedTime?: string;
+            offeredBaggageKg?: number;
+            note?: string;
+        } = {};
+
+        if (values.proposedDate) payload.proposedDate = values.proposedDate;
+        if (values.proposedTime) payload.proposedTime = values.proposedTime;
+        if (values.offeredBaggageKg && !isNaN(Number(values.offeredBaggageKg))) {
+            payload.offeredBaggageKg = Number(values.offeredBaggageKg);
+        }
+        if (values.note) payload.note = values.note;
+
+        try {
+            await updateSegmentExtras(Number(id), idx1, payload);
+            await load();
+            alert(`Segment #${idx1} saved`);
+        } catch (e) {
+            console.error(e);
+            alert("Failed to save segment changes");
+        }
+    }
+
+    async function onNotifyAgent(): Promise<void> {
+        if (!id) return;
+        try {
+            await notifySegmentChangesToAgent(Number(id));
+            alert(
+                "Changes emailed to agent. Once the agent confirms, send to RC for fare."
+            );
+        } catch (e) {
+            console.error(e);
+            alert("Failed to email changes to agent");
+        }
+    }
+
     async function load(): Promise<void> {
         if (!id) return;
         setLoading(true);
@@ -59,6 +132,8 @@ export default function GroupRequestDetails(): JSX.Element {
                 contactEmail: data.request.contactEmail,
                 contactNumber: data.request.contactNumber ?? "",
             });
+            // reset segment cache for fresh values
+            setSegForm({});
         } catch (err) {
             setError("Failed to load group request details");
             console.error("Error loading group request:", err);
@@ -69,6 +144,7 @@ export default function GroupRequestDetails(): JSX.Element {
 
     useEffect(() => {
         void load();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
     async function onSendToRC(): Promise<void> {
@@ -77,9 +153,7 @@ export default function GroupRequestDetails(): JSX.Element {
             const usernames: string[] = rcs.map((u: any) => u.username);
 
             if (usernames.length === 0) {
-                alert(
-                    "No Route Controllers available. Please contact an administrator."
-                );
+                alert("No Route Controllers available. Please contact an administrator.");
                 return;
             }
 
@@ -124,13 +198,11 @@ export default function GroupRequestDetails(): JSX.Element {
             return;
         }
 
-        // NEW: currency + note
+        // currency + note
         const defaultCurrency = (data?.request.currency ?? "LKR").toUpperCase();
         const currency = (
-            window.prompt(
-                "Currency (3 letters, e.g. LKR, USD):",
-                defaultCurrency
-            ) ?? defaultCurrency
+            window.prompt("Currency (3 letters, e.g. LKR, USD):", defaultCurrency) ??
+            defaultCurrency
         )
             .trim()
             .toUpperCase();
@@ -150,8 +222,8 @@ export default function GroupRequestDetails(): JSX.Element {
                 createdDate: toYMD(now),
                 expiryDate: toYMD(in48h),
                 status: "DRAFT",
-                currency, // NEW
-                note: note || null, // NEW
+                currency,
+                note: note || null,
             };
             await createQuotation(dto);
             await load();
@@ -311,16 +383,16 @@ export default function GroupRequestDetails(): JSX.Element {
     }
 
     const r = data.request;
-    const statusColors = {
+
+    // Fixed: only valid BookingStatus keys
+    const statusColors: Record<BookingStatus, string> = {
         NEW: "bg-blue-100 text-blue-800",
         REVIEWING: "bg-yellow-100 text-yellow-800",
         QUOTED: "bg-purple-100 text-purple-800",
-        ACCEPTED: "bg-green-100 text-green-800",
-        REJECTED: "bg-red-100 text-red-800",
-        COMPLETED: "bg-gray-100 text-gray-800",
-        TICKETED: "bg-green-100 text-green-800",
+        CONFIRMED: "bg-green-100 text-green-800",
+        TICKETED: "bg-emerald-100 text-emerald-800",
         CANCELLED: "bg-gray-100 text-gray-800",
-    } as const;
+    };
 
     return (
         <div className="p-6 space-y-6">
@@ -331,9 +403,7 @@ export default function GroupRequestDetails(): JSX.Element {
                             Group Request #{r.id}
                         </h2>
                         <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[
-                                (r.status as keyof typeof statusColors) ?? "NEW"
-                                ] || "bg-gray-100 text-gray-800"
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[(r.status as BookingStatus) ?? "NEW"]
                                 }`}
                         >
                             {r.status}
@@ -346,6 +416,16 @@ export default function GroupRequestDetails(): JSX.Element {
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                    {role === "GROUP_DESK" && (
+                        <button
+                            className="px-4 py-2 bg-amber-100 text-amber-700 rounded-md hover:bg-amber-200 transition-colors"
+                            onClick={() => void onNotifyAgent()}
+                            title="Email the proposed per-segment changes to the agent"
+                        >
+                            Email Changes to Agent
+                        </button>
+                    )}
+
                     {role === "GROUP_DESK" && r.status === "NEW" && (
                         <>
                             <button
@@ -565,10 +645,7 @@ export default function GroupRequestDetails(): JSX.Element {
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {data.payments.map((p) => (
-                                        <tr
-                                            key={p.id}
-                                            className="hover:bg-gray-50 transition-colors"
-                                        >
+                                        <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                                             <Td>{p.id}</Td>
                                             <Td className="font-medium">{p.amount}</Td>
                                             <Td>{p.dueDate}</Td>
@@ -597,13 +674,13 @@ export default function GroupRequestDetails(): JSX.Element {
                 </Card>
             </section>
 
-            {/* ===== Itinerary Segments (kept intact) ===== */}
+            {/* ===== Itinerary Segments (editable proposals) ===== */}
             <section>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                     Itinerary Segments
                 </h3>
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="overflow-auto max-h-64">
+                    <div className="overflow-auto max-h-96">
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
@@ -611,41 +688,123 @@ export default function GroupRequestDetails(): JSX.Element {
                                     <Th>From</Th>
                                     <Th>To</Th>
                                     <Th>Departure</Th>
-                                    <Th>Extras</Th>
+                                    <Th>Proposed Changes</Th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {data.segments.map((s, i) => (
-                                    <tr key={i} className="hover:bg-gray-50 transition-colors">
-                                        <Td>{i + 1}</Td>
-                                        <Td className="font-medium">{s.from}</Td>
-                                        <Td className="font-medium">{s.to}</Td>
-                                        <Td>{s.date}</Td>
-                                        <Td className="text-xs max-w-xs">
-                                            <div className="space-y-1">
-                                                {s.extras?.extraBaggageKg && (
-                                                    <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">
-                                                        Baggage: {s.extras.extraBaggageKg}kg
+                                {data.segments.map((s, i) => {
+                                    const v = segVal(i);
+                                    return (
+                                        <tr key={i} className="hover:bg-gray-50 transition-colors align-top">
+                                            <Td>{i + 1}</Td>
+                                            <Td className="font-medium">{s.from}</Td>
+                                            <Td className="font-medium">{s.to}</Td>
+                                            <Td>
+                                                <div className="text-sm">
+                                                    <div>Requested: {s.date}</div>
+                                                    <div className="mt-1">
+                                                        <label className="block text-xs text-gray-500 mb-1">
+                                                            Alternative date
+                                                        </label>
+                                                        <input
+                                                            type="date"
+                                                            className="border rounded px-2 py-1 text-sm"
+                                                            value={v.proposedDate}
+                                                            onChange={(e) =>
+                                                                setSegForm((f) => ({
+                                                                    ...f,
+                                                                    [i]: { ...segVal(i), proposedDate: e.target.value },
+                                                                }))
+                                                            }
+                                                        />
                                                     </div>
-                                                )}
-                                                {s.extras?.meal && (
-                                                    <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mr-1">
-                                                        Meal: {s.extras.meal}
+                                                </div>
+                                            </Td>
+                                            <Td>
+                                                <div className="text-sm space-y-2">
+                                                    <div>
+                                                        <label className="block text-xs text-gray-500 mb-1">
+                                                            Departure time (HH:mm)
+                                                        </label>
+                                                        <input
+                                                            type="time"
+                                                            className="border rounded px-2 py-1 text-sm"
+                                                            value={v.proposedTime}
+                                                            onChange={(e) =>
+                                                                setSegForm((f) => ({
+                                                                    ...f,
+                                                                    [i]: { ...segVal(i), proposedTime: e.target.value },
+                                                                }))
+                                                            }
+                                                        />
                                                     </div>
-                                                )}
-                                                {s.extras?.notes && (
-                                                    <div className="mt-1 text-gray-600">
-                                                        Notes: {s.extras.notes}
+                                                    <div>
+                                                        <label className="block text-xs text-gray-500 mb-1">
+                                                            Offered baggage (kg)
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            min={0}
+                                                            step={1}
+                                                            placeholder="e.g. 10"
+                                                            className="border rounded px-2 py-1 text-sm w-24"
+                                                            value={v.offeredBaggageKg}
+                                                            onChange={(e) =>
+                                                                setSegForm((f) => ({
+                                                                    ...f,
+                                                                    [i]: {
+                                                                        ...segVal(i),
+                                                                        offeredBaggageKg: e.target.value,
+                                                                    },
+                                                                }))
+                                                            }
+                                                        />
                                                     </div>
-                                                )}
-                                                {!s.extras?.extraBaggageKg &&
-                                                    !s.extras?.meal &&
-                                                    !s.extras?.notes &&
-                                                    "-"}
-                                            </div>
-                                        </Td>
-                                    </tr>
-                                ))}
+                                                    <div>
+                                                        <label className="block text-xs text-gray-500 mb-1">
+                                                            Note
+                                                        </label>
+                                                        <textarea
+                                                            className="border rounded px-2 py-1 text-sm w-full"
+                                                            rows={2}
+                                                            value={v.note}
+                                                            onChange={(e) =>
+                                                                setSegForm((f) => ({
+                                                                    ...f,
+                                                                    [i]: { ...segVal(i), note: e.target.value },
+                                                                }))
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <button
+                                                            className="px-3 py-1 rounded bg-indigo-600 text-white text-sm"
+                                                            onClick={() => void onSaveSegment(i)}
+                                                        >
+                                                            Save segment
+                                                        </button>
+                                                    </div>
+                                                    {/* Existing extras badges (read-only summary), if you want to keep: */}
+                                                    <div className="pt-2 text-xs text-gray-600">
+                                                        {s.extras?.extraBaggageKg && (
+                                                            <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">
+                                                                Requested baggage: {s.extras.extraBaggageKg}kg
+                                                            </div>
+                                                        )}
+                                                        {s.extras?.meal && (
+                                                            <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mr-1">
+                                                                Meal: {s.extras.meal}
+                                                            </div>
+                                                        )}
+                                                        {s.extras?.notes && (
+                                                            <div className="mt-1">Notes: {s.extras.notes}</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </Td>
+                                        </tr>
+                                    );
+                                })}
                                 {data.segments.length === 0 && (
                                     <tr>
                                         <Td
@@ -705,7 +864,7 @@ export default function GroupRequestDetails(): JSX.Element {
 
                                     const statusColor =
                                         statusColorMap[
-                                        quotationStatus as keyof typeof statusColorMap
+                                        (quotationStatus as keyof typeof statusColorMap) ?? "DRAFT"
                                         ] ?? "bg-gray-100 text-gray-800";
 
                                     return (
@@ -801,9 +960,7 @@ function Card({
 function Row({ k, v }: { k: string; v: string }): JSX.Element {
     return (
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 py-3 border-b border-gray-100 last:border-b-0">
-            <div className="text-sm font-medium text-gray-700 sm:col-span-1">
-                {k}
-            </div>
+            <div className="text-sm font-medium text-gray-700 sm:col-span-1">{k}</div>
             <div className="text-sm text-gray-900 sm:col-span-3">{v || "-"}</div>
         </div>
     );
