@@ -16,7 +16,7 @@ import { normalizePos } from "@/data/pos";
 
 const HUB = "CMB";
 const salutations: Salutation[] = ["MR", "MRS", "MISS", "MS", "DR", "PROF", "OTHER"];
-const categories: RequestCategory[] = ["NORMAL", "GSA", "CUSTOMER_CARE", "AGENT"];
+const categories: RequestCategory[] = ["Direct Customer", "GSA", "CUSTOMER_CARE", "AGENT"];
 const groupTypes: GroupType[] = ["EDUCATION", "CONFERENCE", "SPORTS", "PILGRIMAGE", "MICE", "OTHER"];
 
 /* ---------- Lightweight Popup ---------- */
@@ -67,7 +67,7 @@ export default function PublicGroupBookingForm(): JSX.Element {
         specialRequest: "",
         currency: "LKR",
         posCode: "LK",
-        category: "NORMAL",
+        category: "Direct Customer",
         partnerId: "",
     });
 
