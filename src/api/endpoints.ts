@@ -161,8 +161,6 @@ export const sendGroupRequestToRC = (id: number, rcUsername: string) =>
     `/api/group-requests/${id}/send-to-rc?assignedRc=${encodeURIComponent(rcUsername)}`
   );
 
-export const markGroupRequestTicketed = (id: number) =>
-  api.patch(`/api/group-requests/${id}/mark-ticketed`);
 
 /** Update a segment date by index (1-based as per your usage) */
 export const updateSegmentDate = (
@@ -314,3 +312,8 @@ export const submitPublicGroupRequestWithSegments = (
   payload: PublicGroupRequestWithSegments
 ) => api.post<GroupRequestDTO>("/api/public/group-requests", payload);
 
+
+// add this export
+export async function markGroupRequestTicketed(id: number) {
+  return api.patch(`/api/group-requests/${id}/mark-ticketed`);
+}

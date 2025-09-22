@@ -18,6 +18,7 @@ import {
     updateGroupRequest,
     updateSegmentExtras,
     notifySegmentChangesToAgent,
+    markGroupRequestTicketed, // ⬅️ NEW: API to mark ticketed
     type GroupRequestDetails as Details,
     type QuotationDTO,
     type GroupRequestDTO,
@@ -69,9 +70,7 @@ export default function GroupRequestDetails(): JSX.Element {
                 proposedDate: (e as any).proposedDate ?? "",
                 proposedTime: (e as any).proposedTime ?? "",
                 offeredBaggageKg:
-                    (e as any).offeredBaggageKg != null
-                        ? String((e as any).offeredBaggageKg)
-                        : "",
+                    (e as any).offeredBaggageKg != null ? String((e as any).offeredBaggageKg) : "",
                 note: (e as any).note ?? "",
             }
         );
@@ -109,9 +108,7 @@ export default function GroupRequestDetails(): JSX.Element {
         if (!id) return;
         try {
             await notifySegmentChangesToAgent(Number(id));
-            alert(
-                "Changes emailed to agent. Once the agent confirms, send to RC for fare."
-            );
+            alert("Changes emailed to agent. Once the agent confirms, send to RC for fare.");
         } catch (e) {
             console.error(e);
             alert("Failed to email changes to agent");
@@ -165,11 +162,7 @@ export default function GroupRequestDetails(): JSX.Element {
             if (!rc) return;
 
             if (!usernames.includes(rc)) {
-                alert(
-                    `"${rc}" is not a valid Route Controller. Please choose from: ${usernames.join(
-                        ", "
-                    )}`
-                );
+                alert(`"${rc}" is not a valid Route Controller. Please choose from: ${usernames.join(", ")}`);
                 return;
             }
 
@@ -201,8 +194,7 @@ export default function GroupRequestDetails(): JSX.Element {
         // currency + note
         const defaultCurrency = (data?.request.currency ?? "LKR").toUpperCase();
         const currency = (
-            window.prompt("Currency (3 letters, e.g. LKR, USD):", defaultCurrency) ??
-            defaultCurrency
+            window.prompt("Currency (3 letters, e.g. LKR, USD):", defaultCurrency) ?? defaultCurrency
         )
             .trim()
             .toUpperCase();
@@ -247,7 +239,6 @@ export default function GroupRequestDetails(): JSX.Element {
 
     async function onAccept(qid: number): Promise<void> {
         if (!confirm("Are you sure you want to accept this quotation?")) return;
-
         try {
             await acceptQuotation(qid);
             await load();
@@ -259,12 +250,7 @@ export default function GroupRequestDetails(): JSX.Element {
     }
 
     async function onDelete(): Promise<void> {
-        if (
-            !confirm(
-                "Are you sure you want to delete this request? This action cannot be undone."
-            )
-        )
-            return;
+        if (!confirm("Are you sure you want to delete this request? This action cannot be undone.")) return;
 
         try {
             await deleteGroupRequest(Number(id));
@@ -306,6 +292,20 @@ export default function GroupRequestDetails(): JSX.Element {
                 err?.message ||
                 "Failed to update details";
             alert(msg);
+        }
+    }
+
+    // ⬇️ NEW: handler to mark ticketed (GD/Admin)
+    async function onMarkTicketed(): Promise<void> {
+        if (!id) return;
+        if (!confirm("Mark this request as TICKETED?")) return;
+        try {
+            await markGroupRequestTicketed(Number(id));
+            await load();
+            alert("Status updated to TICKETED");
+        } catch (err) {
+            console.error(err);
+            alert("Failed to mark as ticketed");
         }
     }
 
@@ -353,11 +353,7 @@ export default function GroupRequestDetails(): JSX.Element {
                 <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
                     <div className="flex">
                         <div className="flex-shrink-0">
-                            <svg
-                                className="h-5 w-5 text-red-400"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                            >
+                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
                                 <path
                                     fillRule="evenodd"
                                     d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
@@ -366,9 +362,7 @@ export default function GroupRequestDetails(): JSX.Element {
                             </svg>
                         </div>
                         <div className="ml-3">
-                            <p className="text-sm text-red-700">
-                                {error || "Failed to load group request details"}
-                            </p>
+                            <p className="text-sm text-red-700">{error || "Failed to load group request details"}</p>
                         </div>
                     </div>
                 </div>
@@ -384,7 +378,7 @@ export default function GroupRequestDetails(): JSX.Element {
 
     const r = data.request;
 
-    // Fixed: only valid BookingStatus keys
+    // BookingStatus color map (matches your current enum)
     const statusColors: Record<BookingStatus, string> = {
         NEW: "bg-blue-100 text-blue-800",
         REVIEWING: "bg-yellow-100 text-yellow-800",
@@ -392,6 +386,8 @@ export default function GroupRequestDetails(): JSX.Element {
         CONFIRMED: "bg-green-100 text-green-800",
         TICKETED: "bg-emerald-100 text-emerald-800",
         CANCELLED: "bg-gray-100 text-gray-800",
+        CONFIRMED_PNR: "bg-sky-100 text-sky-800",   // ⬅️ if you added this status
+        SETTLED: "bg-emerald-100 text-emerald-800",
     };
 
     return (
@@ -399,9 +395,7 @@ export default function GroupRequestDetails(): JSX.Element {
             <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-gray-200">
                 <div>
                     <div className="flex items-center gap-3 mb-2">
-                        <h2 className="text-2xl font-bold text-gray-900">
-                            Group Request #{r.id}
-                        </h2>
+                        <h2 className="text-2xl font-bold text-gray-900">Group Request #{r.id}</h2>
                         <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[(r.status as BookingStatus) ?? "NEW"]
                                 }`}
@@ -410,13 +404,13 @@ export default function GroupRequestDetails(): JSX.Element {
                         </span>
                     </div>
                     <p className="text-sm text-gray-600">
-                        <span className="font-medium">{r.agentName}</span> · {r.route} ·{" "}
-                        {r.paxCount} passengers
+                        <span className="font-medium">{r.agentName}</span> · {r.route} · {r.paxCount} passengers
                         {r.assignedRcUsername && ` · Assigned to: ${r.assignedRcUsername}`}
                     </p>
                 </div>
+
                 <div className="flex flex-wrap gap-2">
-                    {role === "GROUP_DESK" && (
+                    {(role === "GROUP_DESK" || role === "ADMIN") && (
                         <button
                             className="px-4 py-2 bg-amber-100 text-amber-700 rounded-md hover:bg-amber-200 transition-colors"
                             onClick={() => void onNotifyAgent()}
@@ -426,19 +420,32 @@ export default function GroupRequestDetails(): JSX.Element {
                         </button>
                     )}
 
+                    {/* NEW: Mark Ticketed action for GD/Admin when not already TICKETED */}
+                    {(role === "GROUP_DESK" || role === "ADMIN") && r.status !== "TICKETED" && (
+                        <button
+                            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center"
+                            onClick={() => void onMarkTicketed()}
+                            title="Mark this request as Ticketed"
+                        >
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                            </svg>
+                            Mark Ticketed
+                        </button>
+                    )}
+
                     {role === "GROUP_DESK" && r.status === "NEW" && (
                         <>
                             <button
                                 className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors flex items-center"
                                 onClick={() => void onDelete()}
                             >
-                                <svg
-                                    className="w-4 h-4 mr-1"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                >
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
@@ -452,13 +459,7 @@ export default function GroupRequestDetails(): JSX.Element {
                                 className="px-4 py-2 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors flex items-center"
                                 onClick={() => void onSendToRC()}
                             >
-                                <svg
-                                    className="w-4 h-4 mr-1"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                >
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
@@ -470,18 +471,13 @@ export default function GroupRequestDetails(): JSX.Element {
                             </button>
                         </>
                     )}
+
                     {role === "ROUTE_CONTROLLER" && r.status === "REVIEWING" && (
                         <button
                             className="px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors flex items-center"
                             onClick={() => void onProvideQuotation()}
                         >
-                            <svg
-                                className="w-4 h-4 mr-1"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -502,10 +498,7 @@ export default function GroupRequestDetails(): JSX.Element {
                         <div className="text-sm text-gray-500">Contact</div>
                         {(role === "GROUP_DESK" || role === "ADMIN") &&
                             (!editing ? (
-                                <button
-                                    className="text-indigo-600 font-medium"
-                                    onClick={() => setEditing(true)}
-                                >
+                                <button className="text-indigo-600 font-medium" onClick={() => setEditing(true)}>
                                     Edit
                                 </button>
                             ) : (
@@ -547,10 +540,7 @@ export default function GroupRequestDetails(): JSX.Element {
                             <Row k="Routing" v={r.routing ?? "-"} />
                             <Row k="Departure" v={r.departureDate} />
                             <Row k="Return" v={r.returnDate ?? "-"} />
-                            <Row
-                                k="Pax (A/C/I)"
-                                v={`${r.paxAdult ?? 0}/${r.paxChild ?? 0}/${r.paxInfant ?? 0}`}
-                            />
+                            <Row k="Pax (A/C/I)" v={`${r.paxAdult ?? 0}/${r.paxChild ?? 0}/${r.paxInfant ?? 0}`} />
                             <Row k="POS" v={r.posCode} />
                             <Row k="Currency" v={r.currency ?? "-"} />
                             <Row k="Group Type" v={r.groupType ?? "-"} />
@@ -562,67 +552,46 @@ export default function GroupRequestDetails(): JSX.Element {
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <Labeled>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Title
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700">Title</label>
                                 <input
                                     className="w-full px-3 py-2 border rounded"
                                     placeholder="MR / MRS / MS / DR..."
                                     value={form.salutation ?? ""}
                                     onChange={(e) =>
-                                        setForm((f) => ({
-                                            ...f,
-                                            salutation: (e.target.value || undefined) as any,
-                                        }))
+                                        setForm((f) => ({ ...f, salutation: (e.target.value || undefined) as any }))
                                     }
                                 />
                             </Labeled>
                             <Labeled>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    First name
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700">First name</label>
                                 <input
                                     className="w-full px-3 py-2 border rounded"
                                     value={form.firstName}
-                                    onChange={(e) =>
-                                        setForm((f) => ({ ...f, firstName: e.target.value }))
-                                    }
+                                    onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
                                 />
                             </Labeled>
                             <Labeled>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Last name
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700">Last name</label>
                                 <input
                                     className="w-full px-3 py-2 border rounded"
                                     value={form.lastName}
-                                    onChange={(e) =>
-                                        setForm((f) => ({ ...f, lastName: e.target.value }))
-                                    }
+                                    onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
                                 />
                             </Labeled>
                             <Labeled>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Email
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700">Email</label>
                                 <input
                                     className="w-full px-3 py-2 border rounded"
                                     value={form.contactEmail}
-                                    onChange={(e) =>
-                                        setForm((f) => ({ ...f, contactEmail: e.target.value }))
-                                    }
+                                    onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))}
                                 />
                             </Labeled>
                             <Labeled>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Phone
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700">Phone</label>
                                 <input
                                     className="w-full px-3 py-2 border rounded"
                                     value={form.contactNumber ?? ""}
-                                    onChange={(e) =>
-                                        setForm((f) => ({ ...f, contactNumber: e.target.value }))
-                                    }
+                                    onChange={(e) => setForm((f) => ({ ...f, contactNumber: e.target.value }))}
                                 />
                             </Labeled>
                         </div>
@@ -659,10 +628,7 @@ export default function GroupRequestDetails(): JSX.Element {
                                     ))}
                                     {data.payments.length === 0 && (
                                         <tr>
-                                            <Td
-                                                colSpan={5}
-                                                className="px-6 py-4 text-center text-sm text-gray-500"
-                                            >
+                                            <Td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
                                                 No payments recorded yet
                                             </Td>
                                         </tr>
@@ -676,9 +642,7 @@ export default function GroupRequestDetails(): JSX.Element {
 
             {/* ===== Itinerary Segments (editable proposals) ===== */}
             <section>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Itinerary Segments
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Itinerary Segments</h3>
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="overflow-auto max-h-96">
                         <table className="min-w-full divide-y divide-gray-200">
@@ -703,9 +667,7 @@ export default function GroupRequestDetails(): JSX.Element {
                                                 <div className="text-sm">
                                                     <div>Requested: {s.date}</div>
                                                     <div className="mt-1">
-                                                        <label className="block text-xs text-gray-500 mb-1">
-                                                            Alternative date
-                                                        </label>
+                                                        <label className="block text-xs text-gray-500 mb-1">Alternative date</label>
                                                         <input
                                                             type="date"
                                                             className="border rounded px-2 py-1 text-sm"
@@ -739,9 +701,7 @@ export default function GroupRequestDetails(): JSX.Element {
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">
-                                                            Offered baggage (kg)
-                                                        </label>
+                                                        <label className="block text-xs text-gray-500 mb-1">Offered baggage (kg)</label>
                                                         <input
                                                             type="number"
                                                             min={0}
@@ -752,18 +712,13 @@ export default function GroupRequestDetails(): JSX.Element {
                                                             onChange={(e) =>
                                                                 setSegForm((f) => ({
                                                                     ...f,
-                                                                    [i]: {
-                                                                        ...segVal(i),
-                                                                        offeredBaggageKg: e.target.value,
-                                                                    },
+                                                                    [i]: { ...segVal(i), offeredBaggageKg: e.target.value },
                                                                 }))
                                                             }
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">
-                                                            Note
-                                                        </label>
+                                                        <label className="block text-xs text-gray-500 mb-1">Note</label>
                                                         <textarea
                                                             className="border rounded px-2 py-1 text-sm w-full"
                                                             rows={2}
@@ -784,7 +739,8 @@ export default function GroupRequestDetails(): JSX.Element {
                                                             Save segment
                                                         </button>
                                                     </div>
-                                                    {/* Existing extras badges (read-only summary), if you want to keep: */}
+
+                                                    {/* Optional badges (read-only summary) */}
                                                     <div className="pt-2 text-xs text-gray-600">
                                                         {s.extras?.extraBaggageKg && (
                                                             <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">
@@ -796,9 +752,7 @@ export default function GroupRequestDetails(): JSX.Element {
                                                                 Meal: {s.extras.meal}
                                                             </div>
                                                         )}
-                                                        {s.extras?.notes && (
-                                                            <div className="mt-1">Notes: {s.extras.notes}</div>
-                                                        )}
+                                                        {s.extras?.notes && <div className="mt-1">Notes: {s.extras.notes}</div>}
                                                     </div>
                                                 </div>
                                             </Td>
@@ -807,10 +761,7 @@ export default function GroupRequestDetails(): JSX.Element {
                                 })}
                                 {data.segments.length === 0 && (
                                     <tr>
-                                        <Td
-                                            colSpan={5}
-                                            className="px-6 py-4 text-center text-sm text-gray-500"
-                                        >
+                                        <Td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
                                             No itinerary segments added
                                         </Td>
                                     </tr>
@@ -825,9 +776,7 @@ export default function GroupRequestDetails(): JSX.Element {
             <section>
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-900">Quotations</h3>
-                    <span className="text-sm text-gray-500">
-                        {data.quotations.length} quotation(s)
-                    </span>
+                    <span className="text-sm text-gray-500">{data.quotations.length} quotation(s)</span>
                 </div>
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="overflow-auto max-h-96">
@@ -848,9 +797,7 @@ export default function GroupRequestDetails(): JSX.Element {
                                 {data.quotations.map((q) => {
                                     const isExpired = new Date(q.expiryDate) < new Date();
                                     const quotationStatus =
-                                        isExpired &&
-                                            q.status !== "ACCEPTED" &&
-                                            q.status !== "REJECTED"
+                                        isExpired && q.status !== "ACCEPTED" && q.status !== "REJECTED"
                                             ? "EXPIRED"
                                             : q.status;
 
@@ -863,9 +810,8 @@ export default function GroupRequestDetails(): JSX.Element {
                                     };
 
                                     const statusColor =
-                                        statusColorMap[
-                                        (quotationStatus as keyof typeof statusColorMap) ?? "DRAFT"
-                                        ] ?? "bg-gray-100 text-gray-800";
+                                        statusColorMap[(quotationStatus as keyof typeof statusColorMap) ?? "DRAFT"] ??
+                                        "bg-gray-100 text-gray-800";
 
                                     return (
                                         <tr key={q.id} className="hover:bg-gray-50 transition-colors">
@@ -874,9 +820,7 @@ export default function GroupRequestDetails(): JSX.Element {
                                                 {q.totalFare} {q.currency ? q.currency : ""}
                                             </Td>
                                             <Td>{q.createdDate}</Td>
-                                            <Td className={isExpired ? "text-red-600 font-medium" : ""}>
-                                                {q.expiryDate}
-                                            </Td>
+                                            <Td className={isExpired ? "text-red-600 font-medium" : ""}>{q.expiryDate}</Td>
                                             <Td>
                                                 <span
                                                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}
@@ -923,10 +867,7 @@ export default function GroupRequestDetails(): JSX.Element {
                                 })}
                                 {data.quotations.length === 0 && (
                                     <tr>
-                                        <Td
-                                            colSpan={8}
-                                            className="px-6 py-4 text-center text-sm text-gray-500"
-                                        >
+                                        <Td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
                                             No quotations created yet
                                         </Td>
                                     </tr>
@@ -940,18 +881,10 @@ export default function GroupRequestDetails(): JSX.Element {
     );
 }
 
-function Card({
-    title,
-    children,
-}: {
-    title: string;
-    children: ReactNode;
-}): JSX.Element {
+function Card({ title, children }: { title: string; children: ReactNode }): JSX.Element {
     return (
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                {title}
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">{title}</h3>
             {children}
         </div>
     );
@@ -991,10 +924,7 @@ function Td({
     ...rest
 }: TdHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
     return (
-        <td
-            className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 ${className}`}
-            {...rest}
-        >
+        <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 ${className}`} {...rest}>
             {children}
         </td>
     );
