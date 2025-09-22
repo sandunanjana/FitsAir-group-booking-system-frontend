@@ -14,8 +14,10 @@ import "@/styles/public-form.css";
 import PosSelect from "@/components/PosSelect";
 import { normalizePos } from "@/data/pos";
 
+/* ---------- Constants ---------- */
 const HUB = "CMB";
 const salutations: Salutation[] = ["MR", "MRS", "MISS", "MS", "DR", "PROF", "OTHER"];
+// Aligned with backend enum
 const categories: RequestCategory[] = ["DIRECT_CUSTOMER", "GSA", "CUSTOMER_CARE", "AGENT"];
 const groupTypes: GroupType[] = ["EDUCATION", "CONFERENCE", "SPORTS", "PILGRIMAGE", "MICE", "OTHER"];
 
@@ -47,6 +49,7 @@ function Popup({
     );
 }
 
+/* ---------- Main Form ---------- */
 export default function PublicGroupBookingForm(): JSX.Element {
     const [form, setForm] = useState<PublicGroupRequest>({
         salutation: "MR",
@@ -67,7 +70,7 @@ export default function PublicGroupBookingForm(): JSX.Element {
         specialRequest: "",
         currency: "LKR",
         posCode: "LK",
-        category: "DIRECT_CUSTOMER",
+        category: "DIRECT_CUSTOMER", // aligned with backend
         partnerId: "",
     });
 
@@ -681,6 +684,7 @@ function Field({
     );
 }
 
+/* ---------- Segment Row with Multi-Select Requirements ---------- */
 function SegmentRow({
     seg,
     index,
@@ -694,12 +698,35 @@ function SegmentRow({
 }) {
     const baggageOptions = [0, 10, 20, 25, 30, 40];
 
+    // Multiselect options
+    const SPECIAL_OPTIONS = [
+        { key: "MEALS", label: "Meals" },
+        { key: "WHEELCHAIR_RAMP", label: "Wheelchair for ramp" },
+        { key: "SERVICE_HUB", label: "Service hub" },
+        { key: "FITSAIR_SHIELD", label: "FitsAir Shield (travel insurance)" },
+    ] as const;
+
+    // Open/close state for dropdown
+    const [reqOpen, setReqOpen] = useState(false);
+    const selectedReqs: string[] = seg.extras?.specialRequirements ?? [];
+
+    function toggleReq(key: string) {
+        const has = selectedReqs.includes(key);
+        const next = has ? selectedReqs.filter((k) => k !== key) : [...selectedReqs, key];
+        onChange({ ...seg, extras: { ...seg.extras, specialRequirements: next } });
+    }
+
     return (
-        <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-medium text-gray-700">Segment {index + 1}</span>
+        <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl p-6 border border-blue-100 shadow-sm hover:shadow-md transition-shadow duration-300">
+            <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm">
+                        {index + 1}
+                    </div>
+                    <span className="text-lg font-semibold text-gray-800">Flight Segment</span>
+                </div>
                 {totalSegments > 1 && (
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 text-sm text-blue-600 font-medium bg-blue-50 px-3 py-1.5 rounded-full">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                         </svg>
@@ -708,55 +735,163 @@ function SegmentRow({
                 )}
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-5">
+                {/* Date */}
                 <div>
-                    <div className="field-label">Departure Date</div>
-                    <input
-                        className="input"
-                        type="date"
-                        value={seg.date}
-                        onChange={(e) => onChange({ ...seg, date: e.target.value })}
-                        min={new Date().toISOString().split("T")[0]}
-                    />
+                    <div className="field-label mb-2 font-medium text-gray-700">Departure Date</div>
+                    <div className="relative">
+                        <input
+                            className="input bg-white border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors duration-200 rounded-xl py-3 px-4"
+                            type="date"
+                            value={seg.date}
+                            onChange={(e) => onChange({ ...seg, date: e.target.value })}
+                            min={new Date().toISOString().split("T")[0]}
+                        />
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                    </div>
                 </div>
 
                 <div>
-                    <div className="field-label">Extra Baggage (kg)</div>
-                    <select
-                        className="input-select"
-                        value={seg.extras?.extraBaggageKg ?? 0}
-                        onChange={(e) =>
-                            onChange({
-                                ...seg,
-                                extras: { ...seg.extras, extraBaggageKg: Number(e.target.value) },
-                            })
-                        }
-                    >
-                        {baggageOptions.map((kg) => (
-                            <option key={kg} value={kg}>
-                                {kg}
-                            </option>
-                        ))}
-                    </select>
+                    <div className="field-label mb-2 font-medium text-gray-700">Baggage (kg)</div>
+                    <div className="relative">
+                        <select
+                            className="input-select bg-white border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors duration-200 appearance-none rounded-xl py-3 px-4 pr-10"
+                            value={seg.extras?.extraBaggageKg ?? 0}
+                            onChange={(e) =>
+                                onChange({
+                                    ...seg,
+                                    extras: { ...seg.extras, extraBaggageKg: Number(e.target.value) },
+                                })
+                            }
+                        >
+                            {baggageOptions.map((kg) => (
+                                <option key={kg} value={kg}>
+                                    {kg === 0 ? "No extra" : `${kg} kg`}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
                 </div>
 
+                {/* Special requirements multiselect */}
                 <div className="lg:col-span-3">
-                    <div className="field-label">Special Requirements</div>
-                    <input
-                        className="input"
-                        placeholder="Vegetarian meals, wheelchair assistance, etc."
-                        value={[seg.extras?.meal, seg.extras?.notes].filter(Boolean).join(" · ")}
-                        onChange={(e) => {
-                            const [meal, ...rest] = e.target.value.split("·").map((s) => s.trim());
-                            onChange({ ...seg, extras: { ...seg.extras, meal, notes: rest.join(" · ") } });
-                        }}
-                    />
+                    <div className="field-label mb-2 font-medium text-gray-700">Special Requirements</div>
+
+                    {/* Trigger */}
+                    <div className="relative">
+                        <button
+                            type="button"
+                            className="input flex items-center justify-between bg-white border-gray-300 hover:border-blue-400 transition-colors duration-200 rounded-xl py-3 px-4"
+                            onClick={() => setReqOpen((o) => !o)}
+                            aria-haspopup="listbox"
+                            aria-expanded={reqOpen}
+                        >
+                            <span className="flex flex-wrap gap-2 text-left">
+                                {selectedReqs.length === 0 ? (
+                                    <span className="text-gray-500">Select requirements</span>
+                                ) : (
+                                    selectedReqs.map((key) => {
+                                        const label = SPECIAL_OPTIONS.find((o) => o.key === key)?.label ?? key;
+                                        return (
+                                            <span
+                                                key={key}
+                                                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium transition-colors hover:bg-blue-200"
+                                            >
+                                                {label}
+                                                <svg
+                                                    className="w-3.5 h-3.5 cursor-pointer ml-1"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        toggleReq(key);
+                                                    }}
+                                                >
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </span>
+                                        );
+                                    })
+                                )}
+                            </span>
+                            <svg className={`w-5 h-5 text-gray-500 shrink-0 transition-transform duration-200 ${reqOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+
+                        {/* Dropdown */}
+                        {reqOpen && (
+                            <div
+                                className="absolute z-20 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+                                role="listbox"
+                                aria-label="Special Requirements"
+                            >
+                                <div className="max-h-60 overflow-y-auto py-2">
+                                    {SPECIAL_OPTIONS.map((opt) => {
+                                        const checked = selectedReqs.includes(opt.key);
+                                        return (
+                                            <label
+                                                key={opt.key}
+                                                className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors duration-150"
+                                            >
+                                                <div className="flex items-center justify-center h-5 w-5 rounded border-gray-300 bg-white border">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="opacity-0 absolute h-5 w-5"
+                                                        checked={checked}
+                                                        onChange={() => toggleReq(opt.key)}
+                                                    />
+                                                    {checked && (
+                                                        <svg className="h-3.5 w-3.5 text-blue-600 pointer-events-none" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                        </svg>
+                                                    )}
+                                                </div>
+                                                <span className="text-sm text-gray-800">{opt.label}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                                <div className="border-t border-gray-200 px-4 py-3 bg-gray-50 flex justify-end">
+                                    <button
+                                        type="button"
+                                        className="text-sm font-medium text-blue-600 hover:text-blue-800 px-4 py-1.5 rounded-md hover:bg-blue-100 transition-colors duration-150"
+                                        onClick={() => setReqOpen(false)}
+                                    >
+                                        Done
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Optional: free-text notes under the multiselect */}
+                    <div className="mt-4">
+                        <div className="field-label mb-2 font-medium text-gray-700">Additional Notes</div>
+                        <input
+                            className="input bg-white border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors duration-200 rounded-xl py-3 px-4"
+                            placeholder="E.g. vegetarian meals for 5 pax, aisle seating, etc."
+                            value={seg.extras?.notes ?? ""}
+                            onChange={(e) => onChange({ ...seg, extras: { ...seg.extras, notes: e.target.value } })}
+                        />
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
 
+/* ---------- Success Page ---------- */
 function Success(): JSX.Element {
     return (
         <div className="min-h-screen page-gradient flex items-center justify-center p-4">
