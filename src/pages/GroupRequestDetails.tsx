@@ -49,7 +49,7 @@ export default function GroupRequestDetails(): JSX.Element {
     const [form, setForm] = useState<
         Pick<
             GroupRequestDTO,
-            "salutation" | "firstName" | "lastName" | "contactEmail" | "contactNumber"
+            "salutation" | "firstName" | "lastName" | "contactEmail" | "contactNumber" | "companyName"
         >
     >({
         salutation: undefined,
@@ -57,6 +57,7 @@ export default function GroupRequestDetails(): JSX.Element {
         lastName: "",
         contactEmail: "",
         contactNumber: "",
+        companyName: "",
     });
 
     // ===== per-segment proposal form cache (by row index) =====
@@ -138,6 +139,7 @@ export default function GroupRequestDetails(): JSX.Element {
                 lastName: data.request.lastName ?? "",
                 contactEmail: data.request.contactEmail,
                 contactNumber: data.request.contactNumber ?? "",
+                companyName: data.request.companyName ?? ""
             });
             // reset segment cache for fresh values
             setSegForm({});
@@ -288,6 +290,7 @@ export default function GroupRequestDetails(): JSX.Element {
             lastName: form.lastName,
             contactEmail: form.contactEmail,
             contactNumber: form.contactNumber,
+            companyName: form.companyName
         };
 
         try {
@@ -523,6 +526,7 @@ export default function GroupRequestDetails(): JSX.Element {
                                                 lastName: r.lastName ?? "",
                                                 contactEmail: r.contactEmail,
                                                 contactNumber: r.contactNumber ?? "",
+                                                companyName: r.companyName ?? ""
                                             });
                                         }}
                                     >
@@ -543,6 +547,7 @@ export default function GroupRequestDetails(): JSX.Element {
                             <Row k="Title" v={r.salutation ?? "-"} />
                             <Row k="First name" v={r.firstName ?? "-"} />
                             <Row k="Last name" v={r.lastName ?? "-"} />
+                            <Row k="Company name" v={r.companyName ?? "-"} />
                             <Row k="Email" v={r.contactEmail} />
                             <Row k="Phone" v={r.contactNumber ?? "-"} />
                             <Row k="From" v={r.fromAirport ?? "-"} />
@@ -580,12 +585,21 @@ export default function GroupRequestDetails(): JSX.Element {
                                     onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
                                 />
                             </Labeled>
+                        
                             <Labeled>
                                 <label className="block text-sm font-medium text-gray-700">Last name</label>
                                 <input
                                     className="w-full px-3 py-2 border rounded"
                                     value={form.lastName}
                                     onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
+                                />
+                            </Labeled>
+                            <Labeled>
+                                <label className="block text-sm font-medium text-gray-700">Company Name</label>
+                                <input
+                                    className="w-full px-3 py-2 border rounded"
+                                    value={form.companyName}
+                                    onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))}
                                 />
                             </Labeled>
                             <Labeled>
