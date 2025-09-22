@@ -59,7 +59,7 @@ export default function GroupRequests(): JSX.Element {
     };
 
     /** Match backend BookingStatus enum */
-    const statusOptions = ["ALL", "NEW", "REVIEWING", "QUOTED", "CONFIRMED", "TICKETED", "CANCELLED"];
+    const statusOptions = ["ALL", "NEW", "REVIEWING", "QUOTED", "CONFIRMED", "TICKETED", "CANCELLED", "CONFIRMED_PNR", "SETTLED"];
 
     const getStatusColor = (status?: string) => {
         switch (status) {
@@ -69,6 +69,8 @@ export default function GroupRequests(): JSX.Element {
             case "CONFIRMED": return "bg-emerald-100 text-emerald-800";
             case "TICKETED": return "bg-green-100 text-green-800";
             case "CANCELLED": return "bg-gray-100 text-gray-800";
+            case "CONFIRMED_PNR": return "bg-sky-100 text-sky-800";
+            case "SETTLED": return "bg-emerald-100 text-emerald-800";
             default: return "bg-gray-100 text-gray-800";
         }
     };
