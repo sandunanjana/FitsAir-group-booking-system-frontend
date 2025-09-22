@@ -34,6 +34,16 @@ export default function GroupRequestDetails(): JSX.Element {
     const [error, setError] = useState<string | null>(null);
     const { role } = useAuthStore();
 
+
+    // Human-friendly labels for keys saved in extras.specialRequirements
+    const SPECIAL_LABELS: Record<string, string> = {
+        MEALS: "Meals",
+        WHEELCHAIR_RAMP: "Wheelchair (ramp)",
+        SERVICE_HUB: "Service hub",
+        FITSAIR_SHIELD: "FitsAir Shield (travel insurance)",
+    };
+
+
     // ===== inline edit for Title/First/Last/Email/Phone =====
     const [editing, setEditing] = useState(false);
     const [form, setForm] = useState<
@@ -653,11 +663,16 @@ export default function GroupRequestDetails(): JSX.Element {
                                     <Th>To</Th>
                                     <Th>Departure</Th>
                                     <Th>Proposed Changes</Th>
+                                    <Th>Special Requirements</Th> {/* NEW */}
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {data.segments.map((s, i) => {
                                     const v = segVal(i);
+                                    const special = Array.isArray((s as any).extras?.specialRequirements)
+                                        ? ((s as any).extras.specialRequirements as string[])
+                                        : [];
+
                                     return (
                                         <tr key={i} className="hover:bg-gray-50 transition-colors align-top">
                                             <Td>{i + 1}</Td>
@@ -740,7 +755,7 @@ export default function GroupRequestDetails(): JSX.Element {
                                                         </button>
                                                     </div>
 
-                                                    {/* Optional badges (read-only summary) */}
+                                                    {/* Optional existing badges */}
                                                     <div className="pt-2 text-xs text-gray-600">
                                                         {s.extras?.extraBaggageKg && (
                                                             <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">
@@ -756,12 +771,31 @@ export default function GroupRequestDetails(): JSX.Element {
                                                     </div>
                                                 </div>
                                             </Td>
+
+                                            {/* NEW: Special Requirements column */}
+                                            <Td>
+                                                {special.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {special.map((k) => (
+                                                            <span
+                                                                key={k}
+                                                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-800"
+                                                                title={SPECIAL_LABELS[k] ?? k}
+                                                            >
+                                                                {SPECIAL_LABELS[k] ?? k}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-gray-500">-</span>
+                                                )}
+                                            </Td>
                                         </tr>
                                     );
                                 })}
                                 {data.segments.length === 0 && (
                                     <tr>
-                                        <Td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                                        <Td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
                                             No itinerary segments added
                                         </Td>
                                     </tr>
@@ -771,6 +805,7 @@ export default function GroupRequestDetails(): JSX.Element {
                     </div>
                 </div>
             </section>
+
 
             {/* ===== Quotations (with Currency + Note) ===== */}
             <section>

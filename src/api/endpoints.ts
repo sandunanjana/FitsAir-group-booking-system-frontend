@@ -102,6 +102,8 @@ export type Segment = {
     proposedTime?: string | null;        // e.g. "10:30" (HH:mm) or a window like "10:00-12:00"
     offeredBaggageKg?: number | null;    // override/offer vs requested
     note?: string | null;                // per-segment note to agent
+    specialRequirements?: string[];
+    
   };
 };
 
@@ -172,19 +174,21 @@ export const updateSegmentDate = (
     `/api/group-requests/${groupRequestId}/segments/${segmentIndex1Based}/date?date=${encodeURIComponent(newDate)}`
   );
 
-/** Per-segment extras / proposals (accept nulls from UI to "clear" a field) */
+// also allow PATCHing this from back-office if you want:
 export const updateSegmentExtras = (
   groupId: number,
-  segmentIndex: number,
+  segmentIndex1Based: number,
   payload: {
     proposedDate?: string | null;
     proposedTime?: string | null;
     offeredBaggageKg?: number | null;
     note?: string | null;
+    // NEW
+    specialRequirements?: string[] | null;
   }
 ) =>
   api.patch(
-    `/api/group-requests/${groupId}/segments/${segmentIndex}/extras`,
+    `/api/group-requests/${groupId}/segments/${segmentIndex1Based}/extras`,
     payload
   );
 
