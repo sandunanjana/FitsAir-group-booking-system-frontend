@@ -78,7 +78,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }):
                     </div>
 
                     {/* Name + Role card */}
-                    <div className="w-full bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20 mb-5">
+                    <div className="w-full bg-white/10 p-4 rounded-xl backdrop-blur-sm border border白/20 mb-5">
                         <div className="flex flex-col items-center text-center">
                             <p className="font-semibold text-white mt-0.5 truncate">
                                 {(username ?? "grop desk").toLowerCase()}
@@ -122,7 +122,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }):
                     <div className="pt-6 mt-2 border-t border-white/15">
                         <button
                             onClick={logout}
-                            className="flex items-center gap-3 w-full text-white/90 hover:text-white px-4 py-3 rounded-xl hover:bg-white/10 ring-1 ring-inset ring-white/10 hover:ring-white/20 transition-colors"
+                            className="flex items-center gap-3 w-full text-white/90 hover:text白 px-4 py-3 rounded-xl hover:bg-white/10 ring-1 ring-inset ring-white/10 hover:ring-white/20 transition-colors"
                         >
                             <span className="text-lg">🚪</span>
                             <span className="font-semibold">Log out</span>
@@ -133,22 +133,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }):
 
             {/* MAIN */}
             <main className="flex-1 min-h-screen overflow-auto bg-gray-50">
+                {/* HEADER */}
                 <div
-                    className="p-4 flex items-center justify-between shadow-sm sticky top-0 z-30"
+                    className="h-14 px-4 flex items-center justify-between shadow-sm sticky top-0 z-30"
                     style={{ background: BRAND_GRADIENT }}
                 >
-                    {!sidebarOpen && (
-                        <button
-                            onClick={toggleSidebar}
-                            className="text-white/90 p-2 rounded-xl hover:bg-white/10 transition-colors"
-                            title="Show sidebar"
-                            aria-label="Show sidebar"
-                        >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
-                        </button>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {/* Burger appears only when sidebar is hidden */}
+                        {!sidebarOpen && (
+                            <button
+                                onClick={toggleSidebar}
+                                className="text-white/90 p-2 rounded-xl hover:bg-white/10 transition-colors"
+                                title="Show sidebar"
+                                aria-label="Show sidebar"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                </svg>
+                            </button>
+                        )}
+
+                        {/* LOGO in header — visible ONLY when sidebar is closed */}
+                        {!sidebarOpen && (
+                            <Link to="/" className="inline-flex items-center" aria-label="Go to dashboard">
+                                <img src={logoUrl} alt="FitsAir" className="h-8 w-auto rounded-sm select-none" />
+                            </Link>
+                        )}
+                    </div>
+
                     <span className="hidden md:block text-sm text-white/90 ml-auto">
                         {username} • {role ? getRoleDisplay(role) : "No role"}
                     </span>
