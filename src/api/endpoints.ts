@@ -8,7 +8,9 @@ export type BookingStatus =
   | "QUOTED"
   | "CONFIRMED"
   | "TICKETED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "CONFIRMED_PNR"
+  | "SETTLED";
 
 export type RequestCategory = "DIRECT_CUSTOMER" | "GSA" | "CUSTOMER_CARE" | "AGENT";
 export type QuotationStatus = "DRAFT" | "SENT" | "EXPIRED" | "ACCEPTED" | "REJECTED" | "RESENT";
