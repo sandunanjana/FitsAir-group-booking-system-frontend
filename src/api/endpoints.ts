@@ -29,6 +29,7 @@ export type GroupRequestDTO = {
   lastName?: string;
   contactEmail: string;
   contactNumber?: string;
+  companyName?: string;
 
   // itinerary summary
   agentName: string;
@@ -286,6 +287,7 @@ export type PublicGroupRequest = {
   lastName: string;
   email: string;
   contactNumber: string;
+  companyName?: string;
 
   fromAirport: string;
   toAirport: string;

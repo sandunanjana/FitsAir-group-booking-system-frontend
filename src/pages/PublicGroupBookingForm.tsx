@@ -57,6 +57,7 @@ export default function PublicGroupBookingForm(): JSX.Element {
         lastName: "",
         email: "",
         contactNumber: "",
+        companyName: "",
         fromAirport: "",
         toAirport: "",
         routing: "ONE_WAY",
@@ -155,6 +156,7 @@ export default function PublicGroupBookingForm(): JSX.Element {
 
         const payload: PublicGroupRequestWithSegments = {
             ...form,
+            companyName: form.companyName?.trim() || undefined,
             fromAirport: form.fromAirport.toUpperCase(),
             toAirport: form.toAirport.toUpperCase(),
             routing: routingForPayload,
@@ -330,6 +332,17 @@ export default function PublicGroupBookingForm(): JSX.Element {
                                             placeholder="Enter your last name"
                                         />
                                     </Field>
+
+                                    <Field label="Company name" htmlFor="companyName">
+                                        <input
+                                            id="companyName"
+                                            className="input"
+                                            value={form.companyName ?? ""}
+                                            onChange={(e) => setF("companyName", e.target.value)}
+                                            placeholder="Your company (optional)"
+                                        />
+                                    </Field>
+
 
                                     <Field label="Email" required htmlFor="email">
                                         <input
