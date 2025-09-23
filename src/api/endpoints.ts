@@ -323,3 +323,14 @@ export const submitPublicGroupRequestWithSegments = (
 export async function markGroupRequestTicketed(id: number) {
   return api.patch(`/api/group-requests/${id}/mark-ticketed`);
 }
+
+export const searchGroupRequests = (
+  page = 0,
+  size = 20,
+  opts?: { status?: BookingStatus; settledOnly?: boolean }
+) => {
+  const q = new URLSearchParams({ page: String(page), size: String(size) });
+  if (opts?.status) q.set("status", opts.status);
+  if (opts?.settledOnly) q.set("settledOnly", "true");
+  return api.get(`/api/group-requests/search?${q.toString()}`);
+};
