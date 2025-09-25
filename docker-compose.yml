@@ -1,0 +1,16 @@
+services:
+  web:
+    container_name: gbms-web
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - VITE_API_BASE_URL=http://localhost:18080
+    ports:
+      - "5173:5173"
+    networks:
+      - gbms-net
+
+networks:
+  gbms-net:
+    external: true
